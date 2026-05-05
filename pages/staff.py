@@ -12,7 +12,7 @@ class StaffFrame(ctk.CTkFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, fg_color="#F4F5F7")
         self.controller = controller
-        self.current_section = "Dashboard"
+        self.current_section = "Applications"
         self.nav_buttons = {}
         self._build_layout()
 
@@ -53,8 +53,8 @@ class StaffFrame(ctk.CTkFrame):
         # nav
         nav = ctk.CTkFrame(sidebar, fg_color="#F9F9F9")
         nav.grid(row=2, column=0, sticky="ew", padx=10)
-        for label in ["Dashboard", "Applications", "Permit Holders", "Notifications"]:
-            self._add_nav(nav, label, active=(label == "Dashboard"))
+        for label in ["Applications", "Permit Holders", "Notifications"]:
+            self._add_nav(nav, label, active=(label == "Applications"))
 
         # logout
         ctk.CTkButton(sidebar, text="Logout", command=self._logout,
@@ -94,19 +94,7 @@ class StaffFrame(ctk.CTkFrame):
         self.main_container = ctk.CTkFrame(self, fg_color="#F4F5F7", corner_radius=0)
         self.main_container.grid(row=0, column=1, sticky="nsew")
         self.main_container.grid_columnconfigure(0, weight=1)
-        self.main_container.grid_rowconfigure(1, weight=1)
-
-        # top bar
-        top = ctk.CTkFrame(self.main_container, fg_color="#F4F5F7")
-        top.grid(row=0, column=0, sticky="ew", padx=24, pady=(20, 0))
-        self.top_title = ctk.CTkLabel(top, text="Staff Dashboard",
-                                      text_color="#101828",
-                                      font=ctk.CTkFont("Segoe UI", 26, "bold"))
-        self.top_title.pack(anchor="w")
-        self.top_sub = ctk.CTkLabel(top, text="Overview of Barangay 183 Business Permit System",
-                                    text_color="#6B7280",
-                                    font=ctk.CTkFont("Segoe UI", 11))
-        self.top_sub.pack(anchor="w", pady=(2, 0))
+        self.main_container.grid_rowconfigure(0, weight=1)
 
         self.host = None
 
@@ -121,65 +109,22 @@ class StaffFrame(ctk.CTkFrame):
             except:
                 pass
         self.host = ctk.CTkScrollableFrame(self.main_container, fg_color="#F4F5F7")
-        self.host.grid(row=1, column=0, sticky="nsew", padx=24, pady=(12, 0))
+        self.host.grid(row=0, column=0, sticky="nsew", padx=24, pady=12)
         self.host.grid_columnconfigure(0, weight=1)
 
     def _render(self):
         self._clear()
         s = self.current_section
-        self.top_title.configure(text=s if s != "Dashboard" else "Staff Dashboard")
-        subs = {"Dashboard": "Overview of Barangay 183 Business Permit System",
-                "Applications": "Review and manage permit applications",
-                "Permit Holders": "Database of all business permits issued by Barangay 183",
-                "Notifications": "Stay updated on new applications"}
-        self.top_sub.configure(text=subs.get(s, ""))
         
-        if s == "Dashboard":
-            self._render_dashboard()
-        elif s == "Notifications":
+        if s == "Notifications":
             self._render_notifications()
         elif s == "Applications":
             self._render_applications()
         elif s == "Permit Holders":
             self._render_permit_holders()
-        else:
-            self._render_placeholder(s)
 
     def update_welcome(self):
         self._render()
-
-    # ── Dashboard view ───────────────────────────────────────
-    def _render_dashboard(self):
-        h = self.host
-        st = get_application_stats()
-        rate_str = f"{st['rate']}% approval rate"
-
-        row1 = ctk.CTkFrame(h, fg_color="transparent")
-        row1.pack(fill="x", pady=(0, 10))
-        for i in range(4):
-            row1.grid_columnconfigure(i, weight=1)
-        self._stat_card(row1, 0, "Total Applications", str(st["total"]), "📋", "#FFF4E5", "#F05A00", "📈 Live data from system")
-        self._stat_card(row1, 1, "Pending", str(st["pending"]), "⏳", "#FFF9E5", "#D9A100", "Awaiting review")
-        self._stat_card(row1, 2, "Approved", str(st["approved"]), "✅", "#E8F5E9", "#2E7D32", rate_str)
-        from database.db import get_avg_processing_days
-        avg_days = get_avg_processing_days()
-        self._stat_card(row1, 3, "Processing Time", f"{avg_days} days", "📊", "#F3E8FF", "#7C3AED", "📈 Real time average")
-
-        row2 = ctk.CTkFrame(h, fg_color="transparent")
-        row2.pack(fill="x", pady=(0, 12))
-        row2.grid_columnconfigure(0, weight=1)
-        self._stat_card(row2, 0, "Pending Renewals", str(st["renewal"]), "🔄", "#FDE8E8", "#E53E3E", "⊙ Active renewals")
-
-        row3 = ctk.CTkFrame(h, fg_color="transparent")
-        row3.pack(fill="x", pady=(0, 12))
-        row3.grid_columnconfigure(0, weight=1)
-        row3.grid_columnconfigure(1, weight=1)
-        self._chart_card(row3, 0, "Monthly Applications Trend")
-        self._chart_card(row3, 1, "Applications by Business Type")
-
-        self._chart_card_full(h, "Application Status Breakdown")
-
-        self._contact_footer(h)
 
     def _stat_card(self, parent, col, title, value, icon, icon_bg, val_color, subtitle=""):
         card = ctk.CTkFrame(parent, fg_color="white", corner_radius=10,
@@ -198,50 +143,6 @@ class StaffFrame(ctk.CTkFrame):
         if subtitle:
             ctk.CTkLabel(card, text=subtitle, text_color="#9CA3AF",
                          font=ctk.CTkFont("Segoe UI", 9)).pack(anchor="w", padx=14, pady=(0, 12))
-
-    def _chart_card(self, parent, col, title):
-        card = ctk.CTkFrame(parent, fg_color="white", corner_radius=10,
-                            border_width=1, border_color="#E5E7EB")
-        card.grid(row=0, column=col, sticky="nsew", padx=4, pady=2)
-        ctk.CTkLabel(card, text=title, text_color="#111827",
-                     font=ctk.CTkFont("Segoe UI", 12, "bold")).pack(
-            anchor="w", padx=18, pady=(16, 0))
-        ctk.CTkLabel(card, text="No data available", text_color="#9CA3AF",
-                     font=ctk.CTkFont("Segoe UI", 11)).pack(pady=50)
-
-    def _chart_card_full(self, parent, title):
-        card = ctk.CTkFrame(parent, fg_color="white", corner_radius=10,
-                            border_width=1, border_color="#E5E7EB")
-        card.pack(fill="x", pady=(0, 12))
-        ctk.CTkLabel(card, text=title, text_color="#111827",
-                     font=ctk.CTkFont("Segoe UI", 12, "bold")).pack(
-            anchor="w", padx=18, pady=(16, 0))
-        ctk.CTkLabel(card, text="No data available", text_color="#9CA3AF",
-                     font=ctk.CTkFont("Segoe UI", 11)).pack(pady=60)
-
-    def _contact_footer(self, parent):
-        sep = ctk.CTkFrame(parent, fg_color="#E5E7EB", height=1)
-        sep.pack(fill="x", pady=(8, 16))
-        ctk.CTkLabel(parent, text="📞  Contact Barangay 183 Office",
-                     text_color="#111827",
-                     font=ctk.CTkFont("Segoe UI", 13, "bold")).pack(anchor="w")
-        grid = ctk.CTkFrame(parent, fg_color="transparent")
-        grid.pack(fill="x", pady=(8, 20))
-        for i in range(4):
-            grid.grid_columnconfigure(i, weight=1)
-        info = [
-            ("📍 Address", "Palosapis St., Midway Park Subd.,\nBarangay 183, District 1, Caloocan"),
-            ("📞 Contact Number", "(02) 8936 4030"),
-            ("✉️ Email", "brgy183@caloocan.gov.ph"),
-            ("🕐 Office Hours", "Monday - Friday\n8:00 AM - 5:00 PM"),
-        ]
-        for i, (lbl, val) in enumerate(info):
-            f = ctk.CTkFrame(grid, fg_color="transparent")
-            f.grid(row=0, column=i, sticky="nw", padx=4)
-            ctk.CTkLabel(f, text=lbl, text_color="#374151",
-                         font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(anchor="w")
-            ctk.CTkLabel(f, text=val, text_color="#6B7280",
-                         font=ctk.CTkFont("Segoe UI", 10), justify="left").pack(anchor="w")
 
     # ── Notifications view ───────────────────────────────────
     def _render_notifications(self):
@@ -293,11 +194,33 @@ class StaffFrame(ctk.CTkFrame):
     def _render_applications(self):
         h = self.host
         apps = get_all_applications()
+        
+        # Get current staff member's email
+        staff_email = self.controller.logged_in_user or ""
 
         card = ctk.CTkFrame(h, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
         card.pack(fill="x", pady=(0, 12))
         
-        ctk.CTkLabel(card, text="Applications", text_color="#111827", font=ctk.CTkFont("Segoe UI", 13, "bold")).pack(anchor="w", padx=18, pady=(16, 12))
+        # Title and Filter Button
+        title_row = ctk.CTkFrame(card, fg_color="white")
+        title_row.pack(anchor="w", padx=18, pady=(16, 8), fill="x")
+        ctk.CTkLabel(title_row, text="Applications", text_color="#111827", font=ctk.CTkFont("Segoe UI", 13, "bold")).pack(side="left")
+        
+        # Filter button to show only assigned to me
+        if not hasattr(self, 'filter_assigned_only'):
+            self.filter_assigned_only = tk.BooleanVar(value=False)
+        
+        def toggle_filter():
+            self.filter_assigned_only.set(not self.filter_assigned_only.get())
+            self._render()
+        
+        filter_btn = ctk.CTkButton(title_row, text="📌 Assigned to Me", width=120, height=26,
+                                   fg_color="#F3F4F6" if not self.filter_assigned_only.get() else "#E65C00",
+                                   hover_color="#E5E7EB" if not self.filter_assigned_only.get() else "#CC5200",
+                                   text_color="#374151" if not self.filter_assigned_only.get() else "white",
+                                   font=ctk.CTkFont("Segoe UI", 9, "bold"),
+                                   command=toggle_filter)
+        filter_btn.pack(side="right", padx=(0, 18))
         
         hdr = ctk.CTkFrame(card, fg_color="#FAFAFA", corner_radius=0)
         hdr.pack(fill="x", padx=18)
@@ -306,6 +229,10 @@ class StaffFrame(ctk.CTkFrame):
                 ("Submitted", 90), ("Actions", 70)]
         for col, width in cols:
             ctk.CTkLabel(hdr, text=col, text_color="#374151", font=ctk.CTkFont("Segoe UI", 10, "bold"), width=width, anchor="w").pack(side="left", padx=4, pady=6)
+        
+        # Filter apps if needed
+        if self.filter_assigned_only.get():
+            apps = [a for a in apps if a.get("assigned_to") == staff_email]
             
         if not apps:
             ctk.CTkLabel(card, text="No applications found", text_color="#9CA3AF", font=ctk.CTkFont("Segoe UI", 11)).pack(pady=30)
@@ -633,6 +560,18 @@ class StaffFrame(ctk.CTkFrame):
         field(s4, "Risk Level", app.get("risk_level", "Low"))
         ctk.CTkFrame(s4, fg_color="white", height=8).pack()
 
+        # Documents section
+        s5 = section(body, "Uploaded Documents", "📎")
+        docs = ["DTI / SEC / CDA Registration", "Fire Safety Inspection Certificate",
+                "Affidavit of Undertaking", "Business Permit Application Form (Signed)",
+                "Locational Clearance", "Sketch / Location Plan"]
+        for doc in docs:
+            doc_row = ctk.CTkFrame(s5, fg_color="white")
+            doc_row.pack(fill="x", padx=16, pady=4)
+            ctk.CTkLabel(doc_row, text=f"• {doc}", text_color="#374151", font=ctk.CTkFont("Segoe UI", 10), anchor="w").pack(side="left", fill="x", expand=True)
+            ctk.CTkLabel(doc_row, text="✓ Received", text_color="#2E7D32", font=ctk.CTkFont("Segoe UI", 9, "bold")).pack(side="right")
+        ctk.CTkFrame(s5, fg_color="white", height=8).pack()
+
         nf = ctk.CTkFrame(body, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
         nf.pack(fill="x", pady=(0, 10))
         ctk.CTkLabel(nf, text="📝  Reviewer Notes", text_color="#111827",
@@ -695,12 +634,3 @@ class StaffFrame(ctk.CTkFrame):
                          f"Your application for '{app['business_name']}' has been rejected.")
         messagebox.showinfo("Rejected", "Application rejected.")
         self._render()
-
-    # ── Placeholder view ─────────────────────────────────────
-    def _render_placeholder(self, title):
-        card = ctk.CTkFrame(self.host, fg_color="white", corner_radius=10,
-                            border_width=1, border_color="#E5E7EB")
-        card.pack(fill="x", pady=(0, 12))
-        ctk.CTkLabel(card, text=f"{title} content coming soon",
-                     text_color="#9CA3AF",
-                     font=ctk.CTkFont("Segoe UI", 13)).pack(pady=80)

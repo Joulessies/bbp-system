@@ -266,9 +266,6 @@ class DashboardFrame(ctk.CTkFrame):
                 top_info.pack(anchor="w")
                 ctk.CTkLabel(top_info, text=a["business_name"], text_color="#111827", font=ctk.CTkFont("Segoe UI", 12, "bold")).pack(side="left")
                 
-                if str(a.get("business_type")).lower() == "renewal" or "renewal" in str(a.get("application_type", "")).lower() or a["id"] % 2 == 1:
-                    ctk.CTkLabel(top_info, text="RENEWAL", text_color="#E65C00", fg_color="#FFF4E5", font=ctk.CTkFont("Segoe UI", 9, "bold"), corner_radius=4).pack(side="left", padx=10, ipadx=4, ipady=1)
-                
                 dt = (a.get("created_at") or "5/1/2026")[:10]
                 ctk.CTkLabel(info, text=f"Latest ID: {a['id']}  •  Updated: {dt}", text_color="#9CA3AF", font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w", pady=(2,0))
 
@@ -296,11 +293,20 @@ class DashboardFrame(ctk.CTkFrame):
                     
                     ctk.CTkLabel(info_frame, text=f"✅  {p['permit_number']}  —  {p['business_name']}  |  Expires: {(p['expires_at'] or '')[:10]}",
                                  text_color="#2E7D32", font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w")
-                                 
-                    ctk.CTkButton(permit_block, text="🖨 Print Permit", width=100, height=26,
-                                  fg_color="#2E7D32", hover_color="#1B5E20", text_color="white",
-                                  font=ctk.CTkFont("Segoe UI", 10, "bold"),
-                                  command=lambda p_data=p: self._print_permit(p_data)).pack(side="right", padx=12)
+                    
+                    # Check if permit is expired
+                    from datetime import datetime
+                    try:
+                        exp_date = datetime.strptime((p['expires_at'] or '')[:10], '%Y-%m-%d')
+                        is_expired = exp_date < datetime.now()
+                    except:
+                        is_expired = False
+                    
+                    if is_expired:
+                        ctk.CTkButton(permit_block, text="↻ Renew Permit", width=100, height=26,
+                                      fg_color="#E65C00", hover_color="#CC5200", text_color="white",
+                                      font=ctk.CTkFont("Segoe UI", 10, "bold"),
+                                      command=lambda app_data=a: self._renew_permit(app_data)).pack(side="right", padx=12)
 
     def _print_permit(self, permit_data):
         import os, tempfile, webbrowser
@@ -417,6 +423,38 @@ class DashboardFrame(ctk.CTkFrame):
             
         webbrowser.open('file://' + os.path.realpath(path))
 
+    def _renew_permit(self, app_data):
+        """Create a renewal application for an expired permit"""
+        result = messagebox.askyesno("Renew Permit", 
+            f"Do you want to renew your permit for {app_data['business_name']}?\n\n"
+            f"A new application will be created as a renewal. You may need to update some information.")
+        if not result:
+            return
+        
+        user = self.controller.logged_in_user or ""
+        
+        # Create a renewal application with existing data
+        submit_application(
+            user_email=user,
+            business_name=app_data.get("business_name", ""),
+            business_type=app_data.get("business_type", ""),
+            ownership_type=app_data.get("ownership_type", ""),
+            business_address=app_data.get("business_address", ""),
+            capital_investment=app_data.get("capital_investment", ""),
+            employees_male=app_data.get("employees_male", ""),
+            employees_female=app_data.get("employees_female", ""),
+            owner_first_name=app_data.get("owner_first_name", ""),
+            owner_last_name=app_data.get("owner_last_name", ""),
+            contact_number=app_data.get("contact_number", ""),
+            email=app_data.get("email_address", ""),
+            tin_number=app_data.get("tin_number", ""),
+            dti_sec_cda_reg_no=app_data.get("dti_sec_cda_reg_no", ""),
+            gender=app_data.get("gender", "")
+        )
+        
+        messagebox.showinfo("Success", "Renewal application submitted successfully!")
+        self._render()
+
     # ── New Application ──────────────────────────────────────
     def _render_new_app(self):
         h = self.host
@@ -475,7 +513,38 @@ class DashboardFrame(ctk.CTkFrame):
         field(s3, "No. of Male Employees *", "male_employees")
         field(s3, "No. of Female Employees *", "female_employees")
         field(s3, "Capital / Asset (Php) *", "capital_asset")
-        combo(s3, "Line of Business *", ["Select line of business", "Food", "Retail", "Services", "Manufacturing", "Other"], "line_of_business")
+        
+        # Line of Business with conditional field for "Other"
+        ctk.CTkLabel(s3, text="Line of Business *", text_color="#111827",
+                     font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w", pady=(8, 2))
+        lob_var = tk.StringVar(value="Select line of business")
+        self.form_vars["line_of_business"] = lob_var
+        lob_combo = ctk.CTkComboBox(s3, variable=lob_var, values=["Select line of business", "Food", "Retail", "Services", "Manufacturing", "Other"],
+                        height=36, fg_color="#F3F4F6",
+                        border_width=0, dropdown_fg_color="white")
+        lob_combo.pack(fill="x", pady=(0, 8))
+        
+        # Conditional field for "Other"
+        other_field_container = ctk.CTkFrame(s3, fg_color="white")
+        other_field_container.pack(fill="x", pady=(0, 8))
+        
+        def update_other_field(*args):
+            if lob_var.get() == "Other":
+                if not hasattr(self, '_other_field_shown'):
+                    ctk.CTkLabel(other_field_container, text="Please specify the line of business", text_color="#111827",
+                                 font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w", pady=(8, 2))
+                    other_entry = ctk.CTkEntry(other_field_container, fg_color="#F3F4F6", border_width=1, 
+                                               border_color="#E5E7EB", height=36)
+                    other_entry.pack(fill="x")
+                    self.form_vars["line_of_business_other"] = other_entry
+                    self._other_field_shown = True
+            else:
+                other_field_container.pack_forget()
+                other_field_container.pack(fill="x", pady=(0, 8))
+                if hasattr(self, '_other_field_shown'):
+                    self._other_field_shown = False
+        
+        lob_var.trace("w", update_other_field)
 
         # Section 4: Documents
         s4 = section_card("Required Documents")
@@ -530,6 +599,13 @@ class DashboardFrame(ctk.CTkFrame):
         except OSError:
             messagebox.showerror("Error", "Cannot read file.")
             return
+        
+        # Check individual file size limit (50 MB per file)
+        max_file_size = 50 * 1024 * 1024
+        if size > max_file_size:
+            messagebox.showerror("File Too Large", f"File size exceeds 50 MB limit. Your file is {size / (1024*1024):.2f} MB.")
+            return
+        
         current = sum(d["size"] for d in self.uploaded_documents.values())
         prev = self.uploaded_documents.get(doc_name, {}).get("size", 0)
         if current - prev + size > self.max_upload_bytes:
@@ -549,12 +625,19 @@ class DashboardFrame(ctk.CTkFrame):
 
         def val(key):
             v = self.form_vars.get(key)
+            if isinstance(v, ctk.CTkEntry):
+                return v.get().strip() if v else ""
             return v.get().strip() if v else ""
+
+        # Handle line of business with "Other" option
+        lob = val("line_of_business")
+        if lob == "Other":
+            lob = val("line_of_business_other")
 
         submit_application(
             user_email=user,
             business_name=bname_val,
-            business_type=val("line_of_business"),
+            business_type=lob,
             ownership_type=val("ownership_type"),
             business_address=val("business_address"),
             capital_investment=val("capital_asset"),

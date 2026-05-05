@@ -391,7 +391,7 @@ class AdminFrame(ctk.CTkFrame):
         acts = ctk.CTkFrame(new_staff, fg_color="transparent")
         acts.pack(anchor="w", padx=18, pady=(15, 20))
         ctk.CTkButton(acts, text="Create Staff Account", fg_color="#E65C00", hover_color="#CC5200", text_color="white", height=34, font=ctk.CTkFont("Segoe UI", 10, "bold"), command=self._create_staff).pack(side="left", padx=(0, 10))
-        ctk.CTkButton(acts, text="Cancel", fg_color="white", text_color="#374151", border_width=1, border_color="#E5E7EB", height=34, font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(side="left")
+        ctk.CTkButton(acts, text="Cancel", fg_color="white", text_color="#374151", border_width=1, border_color="#E5E7EB", height=34, font=ctk.CTkFont("Segoe UI", 10, "bold"), command=lambda: (self.entry_staff_name.delete(0, "end"), self.entry_staff_email.delete(0, "end"), self.entry_staff_pass.delete(0, "end"))).pack(side="left")
 
         # Staff Members
         card = ctk.CTkFrame(h, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
@@ -520,7 +520,10 @@ class AdminFrame(ctk.CTkFrame):
         from database.db import create_staff_account
         success, msg = create_staff_account(email, pwd, name)
         if success:
-            messagebox.showinfo("Success", "Staff account created!")
+            messagebox.showinfo("Success", "Staff account created successfully!")
+            self.entry_staff_name.delete(0, "end")
+            self.entry_staff_email.delete(0, "end")
+            self.entry_staff_pass.delete(0, "end")
             self._render()
         else:
             messagebox.showerror("Error", msg)
@@ -686,10 +689,49 @@ class AdminFrame(ctk.CTkFrame):
 
     # ── Permit Holders view ──────────────────────────────────
     def _render_permits(self):
+        from datetime import datetime, timedelta
         h = self.host
         permits = get_all_permits()
         apps = get_all_applications()
         pending_apps = [a for a in apps if a["status"] == "Pending"]
+        
+        # Filters
+        filter_box = ctk.CTkFrame(h, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
+        filter_box.pack(fill="x", pady=(0, 12))
+        ctk.CTkLabel(filter_box, text="Filter Permits", text_color="#111827", font=ctk.CTkFont("Segoe UI", 11, "bold")).pack(anchor="w", padx=18, pady=(16, 8))
+        
+        f_row = ctk.CTkFrame(filter_box, fg_color="transparent")
+        f_row.pack(fill="x", padx=18, pady=(0, 16))
+        
+        # Date range filter
+        date_frame = ctk.CTkFrame(f_row, fg_color="transparent")
+        date_frame.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        ctk.CTkLabel(date_frame, text="Date Range", text_color="#374151", font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w")
+        permit_date_var = tk.StringVar(value="All Time")
+        permit_date_combo = ctk.CTkComboBox(date_frame, variable=permit_date_var, 
+                                            values=["All Time", "Today", "This Week", "This Month", "This Year", "Custom"],
+                                            fg_color="#F9FAFB", text_color="#111827", button_color="#F9FAFB", height=32)
+        permit_date_combo.pack(fill="x", pady=(4, 0))
+        
+        # Apply date filter
+        def apply_permit_filter():
+            date_range = permit_date_var.get()
+            now = datetime.now()
+            filtered = permits
+            
+            if date_range == "Today":
+                filtered = [p for p in permits if p.get("issued_at", "")[:10] == now.strftime("%Y-%m-%d")]
+            elif date_range == "This Week":
+                start = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
+                filtered = [p for p in permits if p.get("issued_at", "")[:10] >= start]
+            elif date_range == "This Month":
+                filtered = [p for p in permits if p.get("issued_at", "")[:10][:7] == now.strftime("%Y-%m")]
+            elif date_range == "This Year":
+                filtered = [p for p in permits if p.get("issued_at", "")[:4] == now.strftime("%Y")]
+            
+            return filtered
+        
+        permits = apply_permit_filter()
 
         # Pending applications to review
         if pending_apps:
@@ -922,16 +964,25 @@ class AdminFrame(ctk.CTkFrame):
         f_row = ctk.CTkFrame(filter_box, fg_color="transparent")
         f_row.pack(fill="x", padx=18, pady=(0, 16))
         
+        # Date range filter
+        date_frame = ctk.CTkFrame(f_row, fg_color="transparent")
+        date_frame.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        ctk.CTkLabel(date_frame, text="Date Range", text_color="#374151", font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w")
+        date_range_var = tk.StringVar(value="All Time")
+        date_range_combo = ctk.CTkComboBox(date_frame, variable=date_range_var, 
+                                           values=["All Time", "Today", "This Week", "This Month", "This Year", "Custom"],
+                                           fg_color="#F9FAFB", text_color="#111827", button_color="#F9FAFB", height=32)
+        date_range_combo.pack(fill="x")
+        
         def _add_filter(parent, label, vals):
             f = ctk.CTkFrame(parent, fg_color="transparent")
             f.pack(side="left", fill="x", expand=True, padx=(0, 10))
             ctk.CTkLabel(f, text=label, text_color="#374151", font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w")
             ctk.CTkOptionMenu(f, values=vals, fg_color="#F9FAFB", text_color="#111827", button_color="#F9FAFB", height=32).pack(fill="x")
             
-        _add_filter(f_row, "Date Range", ["All Time"])
-        _add_filter(f_row, "Status", ["All Status"])
-        _add_filter(f_row, "Business Type", ["All Types"])
-        _add_filter(f_row, "Risk Level", ["All Levels"])
+        _add_filter(f_row, "Status", ["All Status", "Pending", "Under Review", "Approved", "Returned for Correction"])
+        _add_filter(f_row, "Business Type", ["All Types", "Food", "Retail", "Services", "Manufacturing", "Other"])
+        _add_filter(f_row, "Risk Level", ["All Levels", "Low", "Medium", "High"])
         
         ctk.CTkButton(filter_box, text="Reset Filters", fg_color="white", text_color="#374151", border_width=1, border_color="#E5E7EB", width=100, height=30).pack(anchor="w", padx=18, pady=(0, 16))
 
@@ -988,32 +1039,84 @@ class AdminFrame(ctk.CTkFrame):
     def _print_permit(self, p):
         import os, tempfile, webbrowser
         from datetime import datetime
-        html = f"""<html><head><title>Barangay Business Clearance</title>
-<style>body{{font-family:Arial;padding:50px;color:#111827;max-width:700px;margin:auto}}
-h1{{text-align:center;color:#E65C00;margin-bottom:4px}}
-h3{{text-align:center;color:#374151;margin-top:0}}
-.info{{margin:30px 0}}.info td{{padding:6px 12px}}.info td:first-child{{font-weight:bold;color:#374151;width:200px}}
-.footer{{text-align:center;margin-top:60px;color:#9CA3AF;font-size:11px;border-top:1px solid #E5E7EB;padding-top:16px}}
-.seal{{text-align:center;margin-top:40px;color:#6B7280}}
-@media print{{body{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}}}</style></head>
-<body>
-<h1>BARANGAY 183</h1>
-<h3>Zone 16, District 1, Caloocan City</h3>
-<hr>
-<h2 style="text-align:center">BARANGAY BUSINESS CLEARANCE</h2>
-<table class="info"><tr><td>Permit Number:</td><td>{p['permit_number']}</td></tr>
-<tr><td>Business Name:</td><td>{p['business_name']}</td></tr>
-<tr><td>Owner / Email:</td><td>{p['user_email']}</td></tr>
-<tr><td>Date Issued:</td><td>{(p['issued_at'] or '')[:10]}</td></tr>
-<tr><td>Valid Until:</td><td>{(p['expires_at'] or '')[:10]}</td></tr>
-<tr><td>Status:</td><td><b>{p['status']}</b></td></tr></table>
-<div class="seal"><p>_________________________</p><p>Barangay Captain</p><p>Barangay 183, Caloocan City</p></div>
-<div class="footer">This document is system-generated. Not valid without dry seal and signature.<br>Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</div>
-<script>window.onload=function(){{window.print()}}</script></body></html>"""
+        
+        try:
+            date_str = p.get('issued_at', str(datetime.now()))[:10]
+            dt = datetime.strptime(date_str, '%Y-%m-%d')
+            formatted_date = dt.strftime('%B %d, %Y')
+        except:
+            formatted_date = datetime.now().strftime('%B %d, %Y')
+
+        owner_name = f"{p.get('owner_first_name', '')} {p.get('owner_last_name', '')}".strip()
+        if not owner_name:
+            owner_name = "___________________"
+
+        import base64
+        def get_b64(fname):
+            try:
+                p_img = os.path.join(os.path.dirname(__file__), "..", "assets", fname)
+                with open(p_img, "rb") as img:
+                    return base64.b64encode(img.read()).decode("utf-8")
+            except: return ""
+
+        logo_b64 = get_b64("logo.jpg")
+        brgy_b64 = get_b64("brgy_logo.jpg")
+        
+        html_content = f"""
+        <html>
+        <head>
+            <title>Barangay Business Clearance - {p.get('permit_number', '')}</title>
+            <style>
+                body {{ font-family: 'Arial', sans-serif; padding: 40px; color: #111827; }}
+                .permit-box {{ padding: 20px 40px; max-width: 800px; margin: 0 auto; text-align: left; position: relative; }}
+                .header {{ text-align: center; margin-bottom: 20px; line-height: 1.4; font-size: 14px; color: #374151; }}
+                .header-title {{ font-weight: bold; font-size: 16px; color: #111827; }}
+                .red-line {{ border-top: 3px solid #E53E3E; border-bottom: 1px solid #E53E3E; height: 2px; margin: 20px 0; }}
+                .main-title {{ color: #E53E3E; text-transform: uppercase; text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 40px; letter-spacing: 2px; }}
+                .content {{ font-size: 16px; line-height: 2; margin-bottom: 60px; text-align: justify; }}
+                .content p {{ text-indent: 40px; margin-bottom: 15px; }}
+                .footer-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }}
+                .sig-box {{ text-align: center; }}
+                .sig-line {{ border-top: 1px solid #111827; width: 80%; margin: 40px auto 5px auto; padding-top: 5px; }}
+                .sig-name {{ font-weight: bold; font-size: 14px; text-transform: uppercase; }}
+                .sig-title {{ font-size: 12px; color: #4b5563; }}
+                .bottom-info {{ margin-top: 60px; display: grid; grid-template-columns: 1fr 1fr; font-size: 12px; color: #4b5563; }}
+                .red-text {{ color: #E53E3E; font-weight: bold; text-transform: uppercase; }}
+                @media print {{ body {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }} }}
+            </style>
+        </head>
+        <body onload="window.print()">
+            <div class="permit-box">
+                <img src="data:image/jpeg;base64,{logo_b64}" width="90" height="90" style="position: absolute; left: 40px; top: 20px;">
+                <img src="data:image/jpeg;base64,{brgy_b64}" width="90" height="90" style="position: absolute; right: 40px; top: 20px;">
+                <div class="header">REPUBLIC OF THE PHILIPPINES<br>CITY OF CALOOCAN<br><span class="header-title">BARANGAY 183, ZONE 16, DISTRICT 1</span><br>Office of the Punong Barangay</div>
+                <div class="red-line"></div>
+                <div class="main-title">BARANGAY BUSINESS CLEARANCE</div>
+                <div class="content">
+                    <b>TO WHOM IT MAY CONCERN:</b><br><br>
+                    <p>This is to certify that the business establishment <b>{p.get('business_name', '')}</b>, owned and operated by <b>{owner_name}</b>, with business address located at <b>{p.get('business_address', '_____________________')}</b> has been granted this Barangay Business Clearance.</p>
+                    <p>This clearance is issued upon the request of the applicant for the purpose of securing a Business/Mayor's Permit and for whatever legal intent it may serve, provided that the business complies with all applicable laws and ordinances.</p>
+                    <p>The applicant has complied with the requirements of this barangay and has paid the necessary fees in accordance with the existing barangay revenue code.</p>
+                    <p>Issued this <b>{formatted_date}</b> at Barangay 183, Zone 16, Caloocan City.</p>
+                </div>
+                <div class="footer-grid">
+                    <div class="sig-box"><div style="text-align: left; font-size: 12px; color: #4b5563; padding-left: 10%;">Conforme / Signature of Applicant:</div><div class="sig-line"></div><div class="sig-name">{owner_name}</div><div class="sig-title">Applicant / Owner</div></div>
+                    <div class="sig-box"><div style="text-align: left; font-size: 12px; color: #4b5563; padding-left: 10%;">Approved By:</div><div class="sig-line"></div><div class="sig-name red-text">HON. MICHAEL RONALD PUNONGBAYAN</div><div class="sig-title">Punong Barangay</div></div>
+                </div>
+                <div class="bottom-info">
+                    <div>Clearance No: {p.get('permit_number', '')}<br>O.R. No: __________________<br>Amount Paid: P 500.00</div>
+                    <div style="text-align: right;"><span class="red-text">NOT VALID WITHOUT DRY SEAL</span><br>Valid until: December 31, {datetime.now().year}</div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
         fd, path = tempfile.mkstemp(suffix=".html")
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(html)
-        webbrowser.open("file://" + os.path.realpath(path))
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+            
+        webbrowser.open('file://' + os.path.realpath(path))
 
     # ── Export functions ──────────────────────────────────────
     def _get_report_data(self):
