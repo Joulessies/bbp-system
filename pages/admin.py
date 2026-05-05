@@ -505,10 +505,9 @@ class AdminFrame(ctk.CTkFrame):
             assigned = am.get('assigned_to') or "Unassigned"
             ctk.CTkLabel(row, text=f"👤 {assigned}", text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 10), width=120, anchor="w").pack(side="left", padx=6)
             
-            a_om = ctk.CTkOptionMenu(row, values=staff_names, width=120, height=28, fg_color="white", text_color="#111827", button_color="white", dropdown_fg_color="white")
+            a_om = ctk.CTkOptionMenu(row, values=staff_names, width=120, height=28, fg_color="white", text_color="#111827", button_color="white", dropdown_fg_color="white", command=lambda choice, app_id=am['id']: self._assign_app(choice, app_id))
             a_om.pack(side="left", padx=6)
             a_om.set("Assign To...")
-            a_om.configure(command=lambda choice, app_id=am['id']: self._assign_app(choice, app_id))
 
     def _create_staff(self):
         name = self.entry_staff_name.get().strip()
@@ -517,14 +516,20 @@ class AdminFrame(ctk.CTkFrame):
         if not name or not email or not pwd:
             messagebox.showerror("Error", "All fields are required")
             return
-        from database.db import create_staff_account
+        from database.db import create_staff_account, get_all_users
         success, msg = create_staff_account(email, pwd, name)
         if success:
-            messagebox.showinfo("Success", "Staff account created successfully!")
-            self.entry_staff_name.delete(0, "end")
-            self.entry_staff_email.delete(0, "end")
-            self.entry_staff_pass.delete(0, "end")
-            self._render()
+            # Verify staff was created by checking database
+            users = get_all_users()
+            staff_exists = any(u["email"] == email and u["role"] == "staff" for u in users)
+            if staff_exists:
+                messagebox.showinfo("Success", f"Staff account '{name}' created successfully and is now visible in the list!")
+                self.entry_staff_name.delete(0, "end")
+                self.entry_staff_email.delete(0, "end")
+                self.entry_staff_pass.delete(0, "end")
+                self._render()
+            else:
+                messagebox.showerror("Error", "Staff was created but not found in database. Please refresh.")
         else:
             messagebox.showerror("Error", msg)
 
@@ -683,8 +688,11 @@ class AdminFrame(ctk.CTkFrame):
                       height=36, corner_radius=6, command=modal.destroy).pack(pady=(0, 12))
 
     def _assign_app(self, choice, app_id):
+        if choice == "Assign To..." or choice == "No staff available":
+            return
         from database.db import assign_application
         assign_application(app_id, choice)
+        messagebox.showinfo("Assigned", f"Application #{app_id} assigned to {choice}")
         self._render()
 
     # ── Permit Holders view ──────────────────────────────────

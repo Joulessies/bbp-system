@@ -241,23 +241,23 @@ class StaffFrame(ctk.CTkFrame):
                 row = ctk.CTkFrame(card, fg_color="white")
                 row.pack(fill="x", padx=18, pady=4)
                 
-                # Dynamic ML Mock Values
+                # Dynamic ML Mock Values (Risk Assessment)
                 cap = a.get("capital_investment", 0)
                 if cap > 1000000:
                     risk = "High"
                     risk_color = "#FDE8E8"
                     risk_txt = "#E53E3E"
-                    score = "0%"
+                    score = "45%"  # Higher capital = higher risk
                 elif cap > 100000:
                     risk = "Medium"
                     risk_color = "#FEF3C7"
                     risk_txt = "#D97706"
-                    score = "70%"
+                    score = "70%"  # Medium capital = medium risk
                 else:
                     risk = "Low"
                     risk_color = "#E1F2E8"
                     risk_txt = "#2E7D32"
-                    score = "100%"
+                    score = "90%"  # Low capital = lower risk
                     
                 status_color = "#FFF4E5" if a["status"] in ("Pending", "Returned for Correction") else "#E8F5E9" if a["status"] in ("Approved", "Ready for Pickup") else "#FDE8E8"
                 status_txt = "#F05A00" if a["status"] in ("Pending", "Returned for Correction") else "#2E7D32" if a["status"] in ("Approved", "Ready for Pickup") else "#E53E3E"
@@ -560,16 +560,22 @@ class StaffFrame(ctk.CTkFrame):
         field(s4, "Risk Level", app.get("risk_level", "Low"))
         ctk.CTkFrame(s4, fg_color="white", height=8).pack()
 
-        # Documents section
+        # Documents section - show uploaded document status
         s5 = section(body, "Uploaded Documents", "📎")
         docs = ["DTI / SEC / CDA Registration", "Fire Safety Inspection Certificate",
                 "Affidavit of Undertaking", "Business Permit Application Form (Signed)",
                 "Locational Clearance", "Sketch / Location Plan"]
-        for doc in docs:
+        # For now, assume all documents are received if application is submitted
+        docs_received = len(docs)  # Mock: all documents received
+        for i, doc in enumerate(docs):
             doc_row = ctk.CTkFrame(s5, fg_color="white")
             doc_row.pack(fill="x", padx=16, pady=4)
             ctk.CTkLabel(doc_row, text=f"• {doc}", text_color="#374151", font=ctk.CTkFont("Segoe UI", 10), anchor="w").pack(side="left", fill="x", expand=True)
             ctk.CTkLabel(doc_row, text="✓ Received", text_color="#2E7D32", font=ctk.CTkFont("Segoe UI", 9, "bold")).pack(side="right")
+        # Document summary
+        doc_summary = ctk.CTkFrame(s5, fg_color="#E8F5E9", corner_radius=6)
+        doc_summary.pack(fill="x", padx=16, pady=(8, 0))
+        ctk.CTkLabel(doc_summary, text=f"✓ {docs_received}/{len(docs)} documents received", text_color="#2E7D32", font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(padx=10, pady=6)
         ctk.CTkFrame(s5, fg_color="white", height=8).pack()
 
         nf = ctk.CTkFrame(body, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
