@@ -40,7 +40,7 @@ class BBPSystemApp(ctk.CTk):
         self.show_frame("LandingFrame")
 
     def _set_window_icon(self):
-        app_icon = self.icons.get("lgu_logo.png", size=(64, 64))
+        app_icon = self.icons.get("lgu_logo.png", size=(64, 64), return_raw=True)
         if app_icon:
             self.iconphoto(True, app_icon)
 

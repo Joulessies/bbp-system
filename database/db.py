@@ -4,7 +4,7 @@ from datetime import datetime
 
 # Ensure the 'db' directory exists
 DB_DIR = 'db'
-DB_PATH = os.path.join(DB_DIR, 'bbp_system.db')
+DB_PATH = os.path.join(DB_DIR, 'bbp_system_v2.db')
 
 
 def _conn():
@@ -20,29 +20,39 @@ def init_db():
 
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        first_name TEXT DEFAULT '',
+        last_name TEXT DEFAULT '',
         email TEXT UNIQUE,
         password TEXT,
-        role TEXT DEFAULT 'user',
+        role TEXT DEFAULT 'applicant',
+        status TEXT DEFAULT 'Active',
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )''')
-
-    try:
-        c.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'")
-    except Exception:
-        pass
-    try:
-        c.execute("ALTER TABLE users ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP")
-    except Exception:
-        pass
 
     c.execute('''CREATE TABLE IF NOT EXISTS applications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_email TEXT,
-        business_name TEXT,
+        business_name TEXT NOT NULL,
         business_type TEXT DEFAULT '',
+        business_address TEXT DEFAULT '',
+        capital_investment REAL DEFAULT 0.0,
+        employees_male INTEGER DEFAULT 0,
+        employees_female INTEGER DEFAULT 0,
+        owner_first_name TEXT DEFAULT '',
+        owner_last_name TEXT DEFAULT '',
+        contact_number TEXT DEFAULT '',
+        email TEXT DEFAULT '',
+        tin_number TEXT DEFAULT '',
+        dti_sec_cda_reg_no TEXT DEFAULT '',
         ownership_type TEXT DEFAULT '',
+        gender TEXT DEFAULT '',
+        
         status TEXT DEFAULT 'Pending',
+        priority TEXT DEFAULT 'Low',
+        completeness_score INTEGER DEFAULT 0,
         risk_level TEXT DEFAULT 'Low',
+        remarks TEXT DEFAULT '',
+        
         submitted_at TEXT DEFAULT CURRENT_TIMESTAMP,
         reviewed_by TEXT DEFAULT '',
         reviewed_at TEXT DEFAULT '',
@@ -73,10 +83,8 @@ def init_db():
 
     # Seed admin
     try:
-        c.execute("INSERT OR IGNORE INTO users (email, password, role) VALUES (?, ?, ?)",
-                  ("admin@bbp.com", "admin123", "admin"))
-        # Ensure existing admin has the admin role
-        c.execute("UPDATE users SET role = 'admin' WHERE email = 'admin@bbp.com'")
+        c.execute("INSERT OR IGNORE INTO users (first_name, last_name, email, password, role) VALUES (?, ?, ?, ?, ?)",
+                  ("Admin", "System", "admin@bbp.com", "admin123", "admin"))
     except Exception as e:
         print(f"Error seeding database: {e}")
 
@@ -94,11 +102,12 @@ def check_login(email, password):
     return result
 
 
-def register_user(email, password):
+def register_user(email, password, first_name="", last_name=""):
     try:
         conn = _conn()
         c = conn.cursor()
-        c.execute("INSERT INTO users (email, password) VALUES (?, ?)", (email, password))
+        c.execute("INSERT INTO users (first_name, last_name, email, password) VALUES (?, ?, ?, ?)", 
+                  (first_name, last_name, email, password))
         conn.commit()
         conn.close()
         return True, "Account created!"
@@ -112,7 +121,7 @@ def register_user(email, password):
 def get_all_users():
     conn = _conn()
     conn.row_factory = sqlite3.Row
-    rows = conn.execute("SELECT id, email, role, created_at FROM users ORDER BY id").fetchall()
+    rows = conn.execute("SELECT id, first_name, last_name, email, role, created_at FROM users ORDER BY id").fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
@@ -151,7 +160,14 @@ def get_user_applications(email):
 def get_user_permits(email):
     conn = _conn()
     conn.row_factory = sqlite3.Row
-    rows = conn.execute("SELECT * FROM permits WHERE user_email=? ORDER BY id DESC", (email,)).fetchall()
+    query = """
+        SELECT p.*, a.owner_first_name, a.owner_last_name, a.business_address 
+        FROM permits p 
+        LEFT JOIN applications a ON p.application_id = a.id 
+        WHERE p.user_email=? 
+        ORDER BY p.id DESC
+    """
+    rows = conn.execute(query, (email,)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
@@ -185,13 +201,34 @@ def update_application_status(app_id, status, reviewer="admin@bbp.com"):
     conn.close()
 
 
-def submit_application(user_email, business_name, business_type="", ownership_type=""):
+def submit_application(user_email, business_name, business_type="", ownership_type="", 
+                       business_address="", capital_investment=0.0, employees_male=0, 
+                       employees_female=0, owner_first_name="", owner_last_name="", 
+                       contact_number="", email="", tin_number="", dti_sec_cda_reg_no="", gender=""):
     conn = _conn()
     c = conn.cursor()
-    c.execute(
-        "INSERT INTO applications (user_email, business_name, business_type, ownership_type) VALUES (?,?,?,?)",
-        (user_email, business_name, business_type, ownership_type))
+    
+    query = """
+        INSERT INTO applications (
+            user_email, business_name, business_type, ownership_type,
+            business_address, capital_investment, employees_male, employees_female,
+            owner_first_name, owner_last_name, contact_number, email, tin_number,
+            dti_sec_cda_reg_no, gender
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    """
+    
+    # Calculate a simple Mock ML completeness score based on filled fields
+    values = (
+        user_email, business_name, business_type, ownership_type,
+        business_address, float(capital_investment or 0.0), 
+        int(employees_male or 0), int(employees_female or 0),
+        owner_first_name, owner_last_name, contact_number, email, 
+        tin_number, dti_sec_cda_reg_no, gender
+    )
+    
+    c.execute(query, values)
     app_id = c.lastrowid
+    
     # auto-create notification for admin
     c.execute(
         "INSERT INTO notifications (target, title, message) VALUES (?, ?, ?)",
@@ -273,3 +310,4 @@ def get_staff_stats():
     """).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+

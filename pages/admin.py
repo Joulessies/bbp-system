@@ -38,7 +38,7 @@ class AdminFrame(ctk.CTkFrame):
         logo = self.controller.icons.get("lgu_logo.png", size=(34, 34))
         if logo:
             self._logo = logo
-            tk.Label(brand, image=self._logo, bg="#F9F9F9").pack(side="left", padx=(0, 8))
+            ctk.CTkLabel(brand, text="", image=self._logo, fg_color="#F9F9F9").pack(side="left", padx=(0, 8))
         bt = ctk.CTkFrame(brand, fg_color="#F9F9F9")
         bt.pack(side="left")
         ctk.CTkLabel(bt, text="Barangay 183", text_color="#0B1A3A",

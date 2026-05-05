@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Optional, Tuple
 from PIL import Image, ImageTk
+import customtkinter as ctk
 
 
 class AppIcons:
@@ -10,8 +11,8 @@ class AppIcons:
         self.assets_dir = assets_dir
         self._cache = {}
 
-    def get(self, filename: str, size: Optional[Tuple[int, int]] = None):
-        key = (filename, size)
+    def get(self, filename: str, size: Optional[Tuple[int, int]] = None, return_raw: bool = False):
+        key = (filename, size, return_raw)
         if key in self._cache:
             return self._cache[key]
 
@@ -20,8 +21,16 @@ class AppIcons:
             return None
 
         image = Image.open(image_path)
-        if size:
-            image = image.resize(size, Image.LANCZOS)
-        tk_image = ImageTk.PhotoImage(image)
-        self._cache[key] = tk_image
-        return tk_image
+        
+        if return_raw:
+            if size:
+                image = image.resize(size, Image.LANCZOS)
+            final_image = ImageTk.PhotoImage(image)
+        else:
+            if size:
+                final_image = ctk.CTkImage(light_image=image, dark_image=image, size=size)
+            else:
+                final_image = ctk.CTkImage(light_image=image, dark_image=image, size=image.size)
+            
+        self._cache[key] = final_image
+        return final_image

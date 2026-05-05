@@ -56,7 +56,7 @@ class LandingFrame(ctk.CTkFrame):
 
         self.nav_logo_image = self._load_nav_logo()
         if self.nav_logo_image:
-            tk.Label(brand, image=self.nav_logo_image, bg=LANDING_COLORS["header_bg"]).pack(side="left", padx=(0, 10))
+            ctk.CTkLabel(brand, text="", image=self.nav_logo_image, fg_color=LANDING_COLORS["header_bg"]).pack(side="left", padx=(0, 10))
 
         brand_text = ctk.CTkFrame(brand, fg_color=LANDING_COLORS["header_bg"])
         brand_text.pack(side="left")
