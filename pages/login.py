@@ -76,8 +76,13 @@ class LoginFrame(ctk.CTkFrame):
 
         if result:
             self.controller.logged_in_user = email
-            if email.lower() == "admin@bbp.com":
+            
+            # Route based on user role
+            role = result.get("role")
+            if role == "admin":
                 self.controller.show_frame("AdminFrame")
+            elif role == "staff":
+                self.controller.show_frame("StaffFrame")
             else:
                 self.controller.show_frame("DashboardFrame")
         else:

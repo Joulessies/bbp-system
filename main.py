@@ -6,6 +6,7 @@ from pages.login import LoginFrame
 from pages.register import RegisterFrame
 from pages.dashboard import DashboardFrame
 from pages.admin import AdminFrame
+from pages.staff import StaffFrame
 from ui.icons import AppIcons
 
 ctk.set_appearance_mode("light")
@@ -31,7 +32,7 @@ class BBPSystemApp(ctk.CTk):
         self.container.grid_columnconfigure(0, weight=1)
 
         self.frames = {}
-        for F in (LandingFrame, LoginFrame, RegisterFrame, DashboardFrame, AdminFrame):
+        for F in (LandingFrame, LoginFrame, RegisterFrame, DashboardFrame, AdminFrame, StaffFrame):
             page_name = F.__name__
             frame = F(parent=self.container, controller=self)
             self.frames[page_name] = frame
@@ -46,7 +47,7 @@ class BBPSystemApp(ctk.CTk):
 
     def show_frame(self, page_name):
         frame = self.frames[page_name]
-        if page_name in ("DashboardFrame", "AdminFrame"):
+        if page_name in ("DashboardFrame", "AdminFrame", "StaffFrame"):
             frame.update_welcome()
         frame.tkraise()
 

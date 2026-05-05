@@ -81,10 +81,12 @@ def init_db():
         FOREIGN KEY(application_id) REFERENCES applications(id)
     )''')
 
-    # Seed admin
+    # Seed admin & staff
     try:
         c.execute("INSERT OR IGNORE INTO users (first_name, last_name, email, password, role) VALUES (?, ?, ?, ?, ?)",
                   ("Admin", "System", "admin@bbp.com", "admin123", "admin"))
+        c.execute("INSERT OR IGNORE INTO users (first_name, last_name, email, password, role) VALUES (?, ?, ?, ?, ?)",
+                  ("Staff", "Member", "staff@bbp.com", "staff123", "staff"))
     except Exception as e:
         print(f"Error seeding database: {e}")
 
@@ -95,11 +97,12 @@ def init_db():
 # ── Auth ─────────────────────────────────────────────────
 def check_login(email, password):
     conn = _conn()
+    conn.row_factory = sqlite3.Row
     c = conn.cursor()
     c.execute("SELECT * FROM users WHERE email = ? AND password = ?", (email, password))
     result = c.fetchone()
     conn.close()
-    return result
+    return dict(result) if result else None
 
 
 def register_user(email, password, first_name="", last_name=""):
