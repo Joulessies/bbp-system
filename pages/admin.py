@@ -405,8 +405,11 @@ class AdminFrame(ctk.CTkFrame):
         for col, w in cols:
             ctk.CTkLabel(hdr, text=col, text_color="#374151", font=ctk.CTkFont("Segoe UI", 10, "bold"), width=w, anchor="w").pack(side="left", padx=6, pady=6)
 
-        staff_users = [u for u in users if u["role"] == "staff"]
-        
+        staff_users = [u for u in users if (u.get("role") or "").strip().lower() == "staff"]
+        if not staff_users:
+            ctk.CTkLabel(card, text="No staff members found", text_color="#9CA3AF",
+                         font=ctk.CTkFont("Segoe UI", 11)).pack(pady=12)
+
         for s in staff_users:
             row = ctk.CTkFrame(card, fg_color="white")
             row.pack(fill="x", padx=18, pady=2)
@@ -425,9 +428,21 @@ class AdminFrame(ctk.CTkFrame):
             
             toggle_opt = "Deactivate/Suspend" if is_active else "Activate Account"
             opts = ["Edit Account", "Reset Password", "View Audit Trail", toggle_opt]
-            om = ctk.CTkOptionMenu(row, values=opts, width=40, height=28, fg_color="#FFFFFF", button_color="transparent", button_hover_color="#F3F4F6", text_color="#374151", dropdown_fg_color="white", dropdown_hover_color="#FFF4E5")
+            om = ctk.CTkOptionMenu(
+                row,
+                values=opts,
+                width=90,
+                height=28,
+                fg_color="#F3F4F6",
+                button_color="#E5E7EB",
+                button_hover_color="#D1D5DB",
+                text_color="#374151",
+                dropdown_fg_color="white",
+                dropdown_hover_color="#FFF4E5",
+                corner_radius=6,
+            )
             om.pack(side="left", padx=6)
-            om.set("⋮")
+            om.set("Actions")
             om.configure(command=lambda choice, m=om, uid=s["id"], cstat=s.get("status", "Active"): self._handle_staff_action(choice, m, uid, cstat))
 
         # ── Registered Business Owners ──
@@ -484,7 +499,7 @@ class AdminFrame(ctk.CTkFrame):
             
         from database.db import get_all_applications
         apps_to_assign = [a for a in get_all_applications() if a["status"] in ("Pending", "Under Review", "Returned for Correction")]
-        staff_names = [s["email"] for s in staff_users]
+        staff_names = [s["email"] for s in staff_users if (s.get("status") or "").lower() == "active"]
         if not staff_names:
             staff_names = ["No staff available"]
             

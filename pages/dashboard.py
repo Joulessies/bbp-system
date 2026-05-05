@@ -2,9 +2,11 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import os
+import shutil
 from database.db import (
     get_user_applications, get_user_permits, submit_application,
     get_notifications, mark_all_notifications_read, clear_all_notifications,
+    add_application_document,
 )
 
 
@@ -634,7 +636,7 @@ class DashboardFrame(ctk.CTkFrame):
         if lob == "Other":
             lob = val("line_of_business_other")
 
-        submit_application(
+        app_id = submit_application(
             user_email=user,
             business_name=bname_val,
             business_type=lob,
@@ -651,6 +653,32 @@ class DashboardFrame(ctk.CTkFrame):
             dti_sec_cda_reg_no=val("registration_no"),
             gender=val("gender")
         )
+
+        failures = []
+        if self.uploaded_documents:
+            upload_root = os.path.join("db", "uploads", f"app_{app_id}")
+            os.makedirs(upload_root, exist_ok=True)
+            for doc_name, meta in self.uploaded_documents.items():
+                src_path = meta.get("path")
+                if not src_path or not os.path.exists(src_path):
+                    failures.append(doc_name)
+                    continue
+                ext = os.path.splitext(src_path)[1].lower()
+                safe_name = "".join(
+                    c if c.isalnum() or c in ("-", "_") else "_" for c in doc_name
+                ).strip("_") or "document"
+                dest_path = os.path.join(upload_root, f"{safe_name}{ext}")
+                try:
+                    shutil.copy2(src_path, dest_path)
+                    add_application_document(app_id, doc_name, dest_path)
+                except OSError:
+                    failures.append(doc_name)
+
+        if failures:
+            messagebox.showwarning(
+                "Upload Warning",
+                "Some documents could not be saved: " + ", ".join(failures)
+            )
 
         messagebox.showinfo("Submitted", "Your application has been submitted successfully!")
         self.form_vars.clear()

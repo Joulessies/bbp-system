@@ -78,6 +78,15 @@ def init_db():
     except sqlite3.OperationalError:
         pass
 
+    c.execute('''CREATE TABLE IF NOT EXISTS application_documents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        application_id INTEGER NOT NULL,
+        doc_name TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        uploaded_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(application_id) REFERENCES applications(id)
+    )''')
+
     c.execute('''CREATE TABLE IF NOT EXISTS notifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         target TEXT DEFAULT 'admin',
@@ -328,6 +337,25 @@ def get_all_applications():
     conn = _conn()
     conn.row_factory = sqlite3.Row
     rows = conn.execute("SELECT * FROM applications ORDER BY id DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def add_application_document(application_id, doc_name, file_path):
+    conn = _conn()
+    conn.execute(
+        "INSERT INTO application_documents (application_id, doc_name, file_path) VALUES (?, ?, ?)",
+        (application_id, doc_name, file_path))
+    conn.commit()
+    conn.close()
+
+
+def get_application_documents(application_id):
+    conn = _conn()
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        "SELECT doc_name, file_path, uploaded_at FROM application_documents WHERE application_id=?",
+        (application_id,)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 

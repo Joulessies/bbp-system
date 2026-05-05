@@ -1,10 +1,12 @@
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
+import os
 from database.db import (
     get_application_stats, get_all_applications, update_application_status,
     get_notifications, mark_all_notifications_read, clear_all_notifications,
     get_all_permits, issue_permit, get_staff_stats, add_notification,
+    get_all_users, get_application_documents,
 )
 
 
@@ -198,6 +200,16 @@ class StaffFrame(ctk.CTkFrame):
         # Get current staff member's email
         staff_email = self.controller.logged_in_user or ""
 
+        # Build staff lookup map (email -> full name + email)
+        staff_lookup = {}
+        for staff in get_all_users():
+            staff_email_key = (staff.get("email") or "").strip()
+            if not staff_email_key:
+                continue
+            full_name = f"{staff.get('first_name', '')} {staff.get('last_name', '')}".strip()
+            display_name = f"{full_name} ({staff_email_key})" if full_name else staff_email_key
+            staff_lookup[staff_email_key] = display_name
+
         card = ctk.CTkFrame(h, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
         card.pack(fill="x", pady=(0, 12))
         
@@ -225,8 +237,8 @@ class StaffFrame(ctk.CTkFrame):
         hdr = ctk.CTkFrame(card, fg_color="#FAFAFA", corner_radius=0)
         hdr.pack(fill="x", padx=18)
         cols = [("ID", 50), ("Business Name", 130), ("Owner", 110), ("Type", 80), 
-                ("Status", 90), ("Risk", 70), ("Score", 60), ("Assigned", 90), 
-                ("Submitted", 90), ("Actions", 70)]
+            ("Status", 90), ("Risk", 70), ("Score", 60), ("Assigned", 180), 
+            ("Submitted", 90), ("Actions", 70)]
         for col, width in cols:
             ctk.CTkLabel(hdr, text=col, text_color="#374151", font=ctk.CTkFont("Segoe UI", 10, "bold"), width=width, anchor="w").pack(side="left", padx=4, pady=6)
         
@@ -282,8 +294,9 @@ class StaffFrame(ctk.CTkFrame):
                 
                 ctk.CTkLabel(row, text=score, text_color="#374151", font=ctk.CTkFont("Segoe UI", 10, "bold"), width=60, anchor="w").pack(side="left", padx=4)
                 
-                assigned = a.get("assigned_to") or "Unassigned"
-                ctk.CTkLabel(row, text=assigned, text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 10), width=90, anchor="w").pack(side="left", padx=4)
+                assigned_email = a.get("assigned_to") or ""
+                assigned = staff_lookup.get(assigned_email, assigned_email) if assigned_email else "Unassigned"
+                ctk.CTkLabel(row, text=assigned, text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 10), width=180, anchor="w").pack(side="left", padx=4)
                 ctk.CTkLabel(row, text=a.get("submitted_at", "")[:10], text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 10), width=90, anchor="w").pack(side="left", padx=4)
                 
                 if a["status"] in ("Pending", "Under Review"):
@@ -554,9 +567,20 @@ class StaffFrame(ctk.CTkFrame):
         field(s3, "DTI/SEC/CDA Reg. No.", app.get("dti_sec_cda_reg_no"))
         ctk.CTkFrame(s3, fg_color="white", height=8).pack()
 
+        staff_lookup_modal = {}
+        for staff in get_all_users():
+            staff_email_key = (staff.get("email") or "").strip()
+            if not staff_email_key:
+                continue
+            full_name = f"{staff.get('first_name', '')} {staff.get('last_name', '')}".strip()
+            display_name = f"{full_name} ({staff_email_key})" if full_name else staff_email_key
+            staff_lookup_modal[staff_email_key] = display_name
+
         s4 = section(body, "Application Meta", "📊")
         field(s4, "Submitted At", (app.get("submitted_at") or "")[:19])
-        field(s4, "Assigned To", app.get("assigned_to") or "Unassigned")
+        assigned_email = app.get("assigned_to") or ""
+        assigned_display = staff_lookup_modal.get(assigned_email, assigned_email) if assigned_email else "Unassigned"
+        field(s4, "Assigned To", assigned_display)
         field(s4, "Risk Level", app.get("risk_level", "Low"))
         ctk.CTkFrame(s4, fg_color="white", height=8).pack()
 
@@ -565,17 +589,43 @@ class StaffFrame(ctk.CTkFrame):
         docs = ["DTI / SEC / CDA Registration", "Fire Safety Inspection Certificate",
                 "Affidavit of Undertaking", "Business Permit Application Form (Signed)",
                 "Locational Clearance", "Sketch / Location Plan"]
-        # For now, assume all documents are received if application is submitted
-        docs_received = len(docs)  # Mock: all documents received
-        for i, doc in enumerate(docs):
+        doc_rows = get_application_documents(app["id"])
+        doc_map = {d["doc_name"]: d["file_path"] for d in doc_rows}
+
+        def open_doc(path):
+            if not path or not os.path.exists(path):
+                messagebox.showerror("Missing File", "Document file not found.")
+                return
+            try:
+                os.startfile(path)
+            except OSError:
+                messagebox.showerror("Open Failed", "Could not open document.")
+
+        docs_received = 0
+        for doc in docs:
+            file_path = doc_map.get(doc, "")
+            is_received = bool(file_path and os.path.exists(file_path))
+            if is_received:
+                docs_received += 1
             doc_row = ctk.CTkFrame(s5, fg_color="white")
             doc_row.pack(fill="x", padx=16, pady=4)
-            ctk.CTkLabel(doc_row, text=f"• {doc}", text_color="#374151", font=ctk.CTkFont("Segoe UI", 10), anchor="w").pack(side="left", fill="x", expand=True)
-            ctk.CTkLabel(doc_row, text="✓ Received", text_color="#2E7D32", font=ctk.CTkFont("Segoe UI", 9, "bold")).pack(side="right")
-        # Document summary
+            ctk.CTkLabel(doc_row, text=f"• {doc}", text_color="#374151",
+                         font=ctk.CTkFont("Segoe UI", 10), anchor="w").pack(side="left", fill="x", expand=True)
+            if is_received:
+                ctk.CTkButton(doc_row, text="View", width=60, height=24,
+                              fg_color="#EBF5FF", hover_color="#DBEAFE", text_color="#1D4ED8",
+                              font=ctk.CTkFont("Segoe UI", 9, "bold"), corner_radius=4,
+                              command=lambda p=file_path: open_doc(p)).pack(side="right", padx=(6, 0))
+                ctk.CTkLabel(doc_row, text="✓ Received", text_color="#2E7D32",
+                             font=ctk.CTkFont("Segoe UI", 9, "bold")).pack(side="right")
+            else:
+                ctk.CTkLabel(doc_row, text="Missing", text_color="#E53E3E",
+                             font=ctk.CTkFont("Segoe UI", 9, "bold")).pack(side="right")
+
         doc_summary = ctk.CTkFrame(s5, fg_color="#E8F5E9", corner_radius=6)
         doc_summary.pack(fill="x", padx=16, pady=(8, 0))
-        ctk.CTkLabel(doc_summary, text=f"✓ {docs_received}/{len(docs)} documents received", text_color="#2E7D32", font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(padx=10, pady=6)
+        ctk.CTkLabel(doc_summary, text=f"✓ {docs_received}/{len(docs)} documents received",
+                     text_color="#2E7D32", font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(padx=10, pady=6)
         ctk.CTkFrame(s5, fg_color="white", height=8).pack()
 
         nf = ctk.CTkFrame(body, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
