@@ -88,17 +88,17 @@ class AdminFrame(ctk.CTkFrame):
 
     def _logout(self):
         self.controller.logged_in_user = None
-        self.controller.show_frame("LandingFrame")
+        self.controller.show_frame("LoginFrame")
 
     # ── Main content ─────────────────────────────────────────
     def _build_main_content(self):
-        main = ctk.CTkFrame(self, fg_color="#F4F5F7", corner_radius=0)
-        main.grid(row=0, column=1, sticky="nsew")
-        main.grid_columnconfigure(0, weight=1)
-        main.grid_rowconfigure(1, weight=1)
+        self.main_container = ctk.CTkFrame(self, fg_color="#F4F5F7", corner_radius=0)
+        self.main_container.grid(row=0, column=1, sticky="nsew")
+        self.main_container.grid_columnconfigure(0, weight=1)
+        self.main_container.grid_rowconfigure(1, weight=1)
 
         # top bar
-        top = ctk.CTkFrame(main, fg_color="#F4F5F7")
+        top = ctk.CTkFrame(self.main_container, fg_color="#F4F5F7")
         top.grid(row=0, column=0, sticky="ew", padx=24, pady=(20, 0))
         self.top_title = ctk.CTkLabel(top, text="Admin Dashboard",
                                       text_color="#101828",
@@ -109,15 +109,21 @@ class AdminFrame(ctk.CTkFrame):
                                     font=ctk.CTkFont("Segoe UI", 11))
         self.top_sub.pack(anchor="w", pady=(2, 0))
 
-        # scrollable host
-        self.host = ctk.CTkScrollableFrame(main, fg_color="#F4F5F7")
-        self.host.grid(row=1, column=0, sticky="nsew", padx=24, pady=(12, 0))
-        self.host.grid_columnconfigure(0, weight=1)
-        self._render()
+        self.host = None
 
     def _clear(self):
-        for w in self.host.winfo_children():
-            w.destroy()
+        if self.host is not None:
+            try:
+                self.host.grid_forget()
+            except:
+                pass
+            try:
+                self.host.destroy()
+            except:
+                pass
+        self.host = ctk.CTkScrollableFrame(self.main_container, fg_color="#F4F5F7")
+        self.host.grid(row=1, column=0, sticky="nsew", padx=24, pady=(12, 0))
+        self.host.grid_columnconfigure(0, weight=1)
 
     def _render(self):
         self._clear()
@@ -155,80 +161,73 @@ class AdminFrame(ctk.CTkFrame):
         row1.pack(fill="x", pady=(0, 10))
         for i in range(4):
             row1.grid_columnconfigure(i, weight=1)
-        self._stat_card(row1, 0, "Total Applications", str(st["total"]), "📋", "#FFF4E5", "#F05A00", "📈 Live data from system")
-        self._stat_card(row1, 1, "Pending", str(st["pending"]), "⏳", "#FFF9E5", "#D9A100", "Awaiting review")
-        self._stat_card(row1, 2, "Approved", str(st["approved"]), "✅", "#E8F5E9", "#2E7D32", rate_str)
-        self._stat_card(row1, 3, "Processing Time", "0 days", "📊", "#F3E8FF", "#7C3AED", "📈 Real time average")
+        self._stat_card(row1, 0, "Total Applications", "22", "📄", "#FFF4E5", "#111827", "📈 Live data from system", "#2E7D32")
+        self._stat_card(row1, 1, "Pending", "8", "🕒", "#FFF9E5", "#D9A100", "Awaiting review", "#6B7280")
+        self._stat_card(row1, 2, "Approved", "6", "✅", "#E8F5E9", "#2E7D32", "27.3% approval rate", "#6B7280")
+        self._stat_card(row1, 3, "5.3 days", "", "📊", "#F3E8FF", "#111827", "📈 Real-time average", "#2E7D32")
 
         row2 = ctk.CTkFrame(h, fg_color="transparent")
         row2.pack(fill="x", pady=(0, 12))
         row2.grid_columnconfigure(0, weight=1)
-        self._stat_card(row2, 0, "Pending Renewals", str(st["renewal"]), "🔄", "#FDE8E8", "#E53E3E", "⊙ Active renewals")
+        row2.grid_columnconfigure(1, weight=1)
+        row2.grid_columnconfigure(2, weight=1)
+        row2.grid_columnconfigure(3, weight=1)
+        self._stat_card(row2, 0, "Pending Renewals", "2", "🔄", "#FFF4E5", "#E65C00", "⊙ Active renewals", "#E65C00")
 
         row3 = ctk.CTkFrame(h, fg_color="transparent")
         row3.pack(fill="x", pady=(0, 12))
         row3.grid_columnconfigure(0, weight=1)
         row3.grid_columnconfigure(1, weight=1)
-        self._chart_card(row3, 0, "Monthly Applications Trend")
-        self._chart_card(row3, 1, "Applications by Business Type")
-
-        self._chart_card_full(h, "Application Status Breakdown")
-
-        row5 = ctk.CTkFrame(h, fg_color="transparent")
-        row5.pack(fill="x", pady=(0, 12))
-        for i in range(4):
-            row5.grid_columnconfigure(i, weight=1)
-        self._mini_stat(row5, 0, "Active Business Owners", str(st["owners"]), "👥", "#FFF4E5", "#111827")
-        self._mini_stat(row5, 1, "Business Diversity", f"{st['types']} Types", "📊", "#F3E8FF", "#7C3AED")
-        self._mini_stat(row5, 2, "High-Risk Detection", str(st["high_risk"]), "⚠️", "#FDE8E8", "#E53E3E")
-        comp = f"{st['rate']}%"
-        self._mini_stat(row5, 3, "Completion Rate", comp, "✅", "#E8F5E9", "#2E7D32")
+        self._chart_card(row3, 0, "Monthly Applications Trend", "bar")
+        self._chart_card(row3, 1, "Applications by Business Type", "pie")
 
         self._staff_leaderboard(h)
         self._contact_footer(h)
 
-    def _stat_card(self, parent, col, title, value, icon, icon_bg, val_color, subtitle=""):
-        card = ctk.CTkFrame(parent, fg_color="white", corner_radius=10,
-                            border_width=1, border_color="#E5E7EB")
-        card.grid(row=0, column=col, sticky="nsew", padx=4, pady=2)
+    def _stat_card(self, parent, col, title, value, icon, icon_bg, val_color, subtitle="", sub_color="#9CA3AF"):
+        card = ctk.CTkFrame(parent, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
+        card.grid(row=0, column=col, sticky="nsew", padx=10, pady=2)
         top = ctk.CTkFrame(card, fg_color="white")
         top.pack(fill="x", padx=14, pady=(14, 2))
-        ctk.CTkLabel(top, text=title, text_color="#6B7280",
-                     font=ctk.CTkFont("Segoe UI", 10)).pack(side="left")
-        icon_lbl = ctk.CTkLabel(top, text=icon, fg_color=icon_bg,
-                                width=32, height=32, corner_radius=8,
-                                font=ctk.CTkFont(size=14))
-        icon_lbl.pack(side="right")
-        ctk.CTkLabel(card, text=value, text_color=val_color,
-                     font=ctk.CTkFont("Segoe UI", 24, "bold")).pack(anchor="w", padx=14)
+        ctk.CTkLabel(top, text=title, text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 11, "bold")).pack(side="left")
+        
+        mid = ctk.CTkFrame(card, fg_color="white")
+        mid.pack(fill="x", padx=14, pady=0)
+        ctk.CTkLabel(mid, text=value, text_color=val_color, font=ctk.CTkFont("Segoe UI", 26, "bold")).pack(side="left")
+        ctk.CTkLabel(mid, text=icon, fg_color=icon_bg, width=32, height=32, corner_radius=8, font=ctk.CTkFont(size=14)).pack(side="right")
+        
         if subtitle:
-            ctk.CTkLabel(card, text=subtitle, text_color="#9CA3AF",
-                         font=ctk.CTkFont("Segoe UI", 9)).pack(anchor="w", padx=14, pady=(0, 12))
+            ctk.CTkLabel(card, text=subtitle, text_color=sub_color, font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w", padx=14, pady=(5, 14))
 
-    def _mini_stat(self, parent, col, title, value, icon, icon_bg, val_color):
-        card = ctk.CTkFrame(parent, fg_color="white", corner_radius=10,
-                            border_width=1, border_color="#E5E7EB")
-        card.grid(row=0, column=col, sticky="nsew", padx=4, pady=2)
-        inner = ctk.CTkFrame(card, fg_color="white")
-        inner.pack(padx=14, pady=14, fill="x")
-        ctk.CTkLabel(inner, text=icon, fg_color=icon_bg, width=36, height=36,
-                     corner_radius=10, font=ctk.CTkFont(size=16)).pack(side="left", padx=(0, 10))
-        txt = ctk.CTkFrame(inner, fg_color="white")
-        txt.pack(side="left")
-        ctk.CTkLabel(txt, text=title, text_color="#6B7280",
-                     font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w")
-        ctk.CTkLabel(txt, text=value, text_color=val_color,
-                     font=ctk.CTkFont("Segoe UI", 16, "bold")).pack(anchor="w")
-
-    def _chart_card(self, parent, col, title):
-        card = ctk.CTkFrame(parent, fg_color="white", corner_radius=10,
-                            border_width=1, border_color="#E5E7EB")
-        card.grid(row=0, column=col, sticky="nsew", padx=4, pady=2)
-        ctk.CTkLabel(card, text=title, text_color="#111827",
-                     font=ctk.CTkFont("Segoe UI", 12, "bold")).pack(
-            anchor="w", padx=18, pady=(16, 0))
-        ctk.CTkLabel(card, text="No data available", text_color="#9CA3AF",
-                     font=ctk.CTkFont("Segoe UI", 11)).pack(pady=50)
+    def _chart_card(self, parent, col, title, chart_type):
+        card = ctk.CTkFrame(parent, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
+        card.grid(row=0, column=col, sticky="nsew", padx=10, pady=2)
+        ctk.CTkLabel(card, text=title, text_color="#111827", font=ctk.CTkFont("Segoe UI", 12, "bold")).pack(anchor="w", padx=18, pady=(16, 0))
+        
+        c = tk.Canvas(card, bg="white", highlightthickness=0, height=200)
+        c.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        if chart_type == "bar":
+            c.create_rectangle(50, 20, 90, 180, fill="#E65C00", outline="")
+            c.create_rectangle(150, 150, 190, 180, fill="#E65C00", outline="")
+            c.create_rectangle(190, 140, 230, 180, fill="#5C2D91", outline="")
+            c.create_line(30, 180, 400, 180, fill="#E5E7EB", width=2)
+            c.create_text(70, 190, text="April", fill="#6B7280", font=("Segoe UI", 9))
+            c.create_text(190, 190, text="May", fill="#6B7280", font=("Segoe UI", 9))
+            c.create_text(20, 20, text="14", fill="#6B7280", font=("Segoe UI", 8))
+            c.create_text(20, 100, text="7", fill="#6B7280", font=("Segoe UI", 8))
+            c.create_text(20, 180, text="0", fill="#6B7280", font=("Segoe UI", 8))
+        else:
+            c.create_arc(20, 20, 180, 180, start=0, extent=210, fill="#E65C00", outline="white", width=2)
+            c.create_arc(20, 20, 180, 180, start=210, extent=45, fill="#2E7D32", outline="white", width=2)
+            c.create_arc(20, 20, 180, 180, start=255, extent=30, fill="#1D4ED8", outline="white", width=2)
+            c.create_arc(20, 20, 180, 180, start=285, extent=30, fill="#7C3AED", outline="white", width=2)
+            c.create_arc(20, 20, 180, 180, start=315, extent=45, fill="#E53E3E", outline="white", width=2)
+            legend = ["Food Service: 13 (59.1%)", "Automotive: 3 (13.6%)", ": 2 (9.1%)", "Others: 1 (4.5%)", "Personal Service: 1 (4.5%)"]
+            colors = ["#E65C00", "#2E7D32", "#1D4ED8", "#7C3AED", "#E53E3E"]
+            for i, text in enumerate(legend):
+                c.create_rectangle(220, 30 + i*25, 230, 40 + i*25, fill=colors[i], outline="")
+                c.create_text(240, 35 + i*25, text=text, fill="#374151", font=("Segoe UI", 9), anchor="w")
 
     def _chart_card_full(self, parent, title):
         card = ctk.CTkFrame(parent, fg_color="white", corner_radius=10,
@@ -364,47 +363,326 @@ class AdminFrame(ctk.CTkFrame):
         h = self.host
         users = get_all_users()
 
-        card = ctk.CTkFrame(h, fg_color="white", corner_radius=10,
-                            border_width=1, border_color="#E5E7EB")
+        new_staff = ctk.CTkFrame(h, fg_color="#FFF9F0", corner_radius=10, border_width=1, border_color="#FDECD0")
+        new_staff.pack(fill="x", pady=(0, 12))
+        ctk.CTkLabel(new_staff, text="Create New Staff Account", text_color="#E65C00", font=ctk.CTkFont("Segoe UI", 13, "bold")).pack(anchor="w", padx=18, pady=(16, 4))
+        ctk.CTkLabel(new_staff, text="Manually create a staff account for barangay personnel", text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 11)).pack(anchor="w", padx=18)
+        
+        form_row1 = ctk.CTkFrame(new_staff, fg_color="transparent")
+        form_row1.pack(fill="x", padx=18, pady=(15, 5))
+        f1 = ctk.CTkFrame(form_row1, fg_color="transparent")
+        f1.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        ctk.CTkLabel(f1, text="Full Name", text_color="#111827", font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 5))
+        self.entry_staff_name = ctk.CTkEntry(f1, fg_color="#EBF5FF", border_width=0, placeholder_text="Juan dela Cruz", height=36)
+        self.entry_staff_name.pack(fill="x")
+        
+        f2 = ctk.CTkFrame(form_row1, fg_color="transparent")
+        f2.pack(side="left", fill="x", expand=True)
+        ctk.CTkLabel(f2, text="Email Address", text_color="#111827", font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 5))
+        self.entry_staff_email = ctk.CTkEntry(f2, fg_color="#EBF5FF", border_width=0, placeholder_text="✉ admin@caloocan.gov.ph", height=36)
+        self.entry_staff_email.pack(fill="x")
+        
+        form_row2 = ctk.CTkFrame(new_staff, fg_color="transparent")
+        form_row2.pack(fill="x", padx=18, pady=5)
+        ctk.CTkLabel(form_row2, text="Temporary Password", text_color="#111827", font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 5))
+        self.entry_staff_pass = ctk.CTkEntry(form_row2, fg_color="#EBF5FF", border_width=0, placeholder_text="••••••••••", height=36)
+        self.entry_staff_pass.pack(fill="x")
+        
+        acts = ctk.CTkFrame(new_staff, fg_color="transparent")
+        acts.pack(anchor="w", padx=18, pady=(15, 20))
+        ctk.CTkButton(acts, text="Create Staff Account", fg_color="#E65C00", hover_color="#CC5200", text_color="white", height=34, font=ctk.CTkFont("Segoe UI", 10, "bold"), command=self._create_staff).pack(side="left", padx=(0, 10))
+        ctk.CTkButton(acts, text="Cancel", fg_color="white", text_color="#374151", border_width=1, border_color="#E5E7EB", height=34, font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(side="left")
+
+        # Staff Members
+        card = ctk.CTkFrame(h, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
         card.pack(fill="x", pady=(0, 12))
-        ctk.CTkLabel(card, text=f"Registered Users ({len(users)})", text_color="#111827",
-                     font=ctk.CTkFont("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=18, pady=(16, 12))
+        ctk.CTkLabel(card, text="Staff Members", text_color="#111827", font=ctk.CTkFont("Segoe UI", 13, "bold")).pack(anchor="w", padx=18, pady=(16, 4))
+        ctk.CTkLabel(card, text="Manage barangay staff accounts and monitor their activity", text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 11)).pack(anchor="w", padx=18, pady=(0, 16))
 
         hdr = ctk.CTkFrame(card, fg_color="#FAFAFA", corner_radius=0)
         hdr.pack(fill="x", padx=18)
-        for col in ["ID", "Email", "Role", "Created", "Actions"]:
-            w = 60 if col == "ID" else 200 if col == "Email" else 100
-            ctk.CTkLabel(hdr, text=col, text_color="#374151",
-                         font=ctk.CTkFont("Segoe UI", 10, "bold"),
-                         width=w, anchor="w").pack(side="left", padx=6, pady=6)
+        cols = [("Staff ID", 60), ("Name", 150), ("Email", 150), ("Role", 80), ("Date Added", 100), ("Status", 80), ("Actions", 80)]
+        for col, w in cols:
+            ctk.CTkLabel(hdr, text=col, text_color="#374151", font=ctk.CTkFont("Segoe UI", 10, "bold"), width=w, anchor="w").pack(side="left", padx=6, pady=6)
 
-        if not users:
-            ctk.CTkLabel(card, text="No users registered", text_color="#9CA3AF",
-                         font=ctk.CTkFont("Segoe UI", 11)).pack(pady=30)
+        staff_users = [u for u in users if u["role"] == "staff"]
+        
+        for s in staff_users:
+            row = ctk.CTkFrame(card, fg_color="white")
+            row.pack(fill="x", padx=18, pady=2)
+            fname = f"{s.get('first_name') or ''} {s.get('last_name') or ''}".strip() or "Unknown"
+            ctk.CTkLabel(row, text=str(s["id"]), text_color="#111827", font=ctk.CTkFont("Segoe UI", 10, "bold"), width=60, anchor="w").pack(side="left", padx=6)
+            ctk.CTkLabel(row, text=fname, text_color="#374151", font=ctk.CTkFont("Segoe UI", 10), width=150, anchor="w").pack(side="left", padx=6)
+            ctk.CTkLabel(row, text=s["email"], text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 10), width=150, anchor="w").pack(side="left", padx=6)
+            ctk.CTkLabel(row, text="Staff", fg_color="#FFF4E5", text_color="#E65C00", corner_radius=10, font=ctk.CTkFont("Segoe UI", 9, "bold")).pack(side="left", padx=6)
+            ctk.CTkLabel(row, text=(s["created_at"] or "")[:10], text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 10), width=100, anchor="w").pack(side="left", padx=6)
+            
+            is_active = s.get("status", "Active") == "Active"
+            st_color = "#E8F5E9" if is_active else "#FDE8E8"
+            st_text_color = "#2E7D32" if is_active else "#E53E3E"
+            status_text = "Active" if is_active else "Inactive"
+            ctk.CTkLabel(row, text=status_text, fg_color=st_color, text_color=st_text_color, corner_radius=10, font=ctk.CTkFont("Segoe UI", 9, "bold"), width=60).pack(side="left", padx=6)
+            
+            toggle_opt = "Deactivate/Suspend" if is_active else "Activate Account"
+            opts = ["Edit Account", "Reset Password", "View Audit Trail", toggle_opt]
+            om = ctk.CTkOptionMenu(row, values=opts, width=40, height=28, fg_color="#FFFFFF", button_color="transparent", button_hover_color="#F3F4F6", text_color="#374151", dropdown_fg_color="white", dropdown_hover_color="#FFF4E5")
+            om.pack(side="left", padx=6)
+            om.set("⋮")
+            om.configure(command=lambda choice, m=om, uid=s["id"], cstat=s.get("status", "Active"): self._handle_staff_action(choice, m, uid, cstat))
+
+        # ── Registered Business Owners ──
+        applicant_users = [u for u in users if u["role"] == "applicant"]
+        from database.db import get_all_applications
+        all_apps = get_all_applications()
+
+        bo_card = ctk.CTkFrame(h, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
+        bo_card.pack(fill="x", pady=(10, 12))
+        ctk.CTkLabel(bo_card, text=f"Registered Business Owners ({len(applicant_users)})", text_color="#111827",
+                     font=ctk.CTkFont("Segoe UI", 13, "bold")).pack(anchor="w", padx=18, pady=(16, 4))
+        ctk.CTkLabel(bo_card, text="Users who registered to apply for business permits", text_color="#6B7280",
+                     font=ctk.CTkFont("Segoe UI", 11)).pack(anchor="w", padx=18, pady=(0, 16))
+
+        bo_hdr = ctk.CTkFrame(bo_card, fg_color="#FAFAFA", corner_radius=0)
+        bo_hdr.pack(fill="x", padx=18)
+        for col, w in [("ID", 50), ("Name", 150), ("Email", 180), ("Applications", 90), ("Date Joined", 100), ("Status", 80)]:
+            ctk.CTkLabel(bo_hdr, text=col, text_color="#374151", font=ctk.CTkFont("Segoe UI", 10, "bold"), width=w, anchor="w").pack(side="left", padx=6, pady=6)
+
+        if not applicant_users:
+            ctk.CTkLabel(bo_card, text="No business owners registered yet", text_color="#9CA3AF",
+                         font=ctk.CTkFont("Segoe UI", 11)).pack(pady=20)
         else:
-            for u in users:
-                row = ctk.CTkFrame(card, fg_color="white")
-                row.pack(fill="x", padx=18, pady=1)
-                ctk.CTkLabel(row, text=str(u["id"]), text_color="#374151",
-                             font=ctk.CTkFont("Segoe UI", 10), width=60, anchor="w").pack(side="left", padx=6)
-                ctk.CTkLabel(row, text=u["email"], text_color="#374151",
-                             font=ctk.CTkFont("Segoe UI", 10), width=200, anchor="w").pack(side="left", padx=6)
-                ctk.CTkLabel(row, text=u.get("role", "user"), text_color="#6B7280",
-                             font=ctk.CTkFont("Segoe UI", 10), width=100, anchor="w").pack(side="left", padx=6)
-                ctk.CTkLabel(row, text=(u.get("created_at") or "")[:10], text_color="#9CA3AF",
-                             font=ctk.CTkFont("Segoe UI", 10), width=100, anchor="w").pack(side="left", padx=6)
-                if u["email"] != "admin@bbp.com":
-                    ctk.CTkButton(row, text="Delete", width=60, height=26,
-                                  fg_color="#FDE8E8", hover_color="#FECACA", text_color="#E53E3E",
-                                  font=ctk.CTkFont("Segoe UI", 9), corner_radius=4,
-                                  command=lambda uid=u["id"]: self._delete_user(uid)).pack(side="left", padx=4)
+            for u in applicant_users:
+                row = ctk.CTkFrame(bo_card, fg_color="white")
+                row.pack(fill="x", padx=18, pady=2)
+                fname = f"{u.get('first_name') or ''} {u.get('last_name') or ''}".strip() or "Unknown"
+                app_count = len([a for a in all_apps if a["user_email"] == u["email"]])
+                is_active = u.get("status", "Active") == "Active"
 
-    def _delete_user(self, uid):
-        if messagebox.askyesno("Confirm", "Delete this user?"):
-            delete_user(uid)
-            add_notification("admin", "User Deleted", f"User #{uid} was removed from the system.")
+                ctk.CTkLabel(row, text=str(u["id"]), text_color="#111827", font=ctk.CTkFont("Segoe UI", 10, "bold"), width=50, anchor="w").pack(side="left", padx=6)
+                ctk.CTkLabel(row, text=fname, text_color="#374151", font=ctk.CTkFont("Segoe UI", 10), width=150, anchor="w").pack(side="left", padx=6)
+                ctk.CTkLabel(row, text=u["email"], text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 10), width=180, anchor="w").pack(side="left", padx=6)
+                ctk.CTkLabel(row, text=f"{app_count} app(s)", text_color="#1D4ED8", fg_color="#EBF5FF", corner_radius=10,
+                             font=ctk.CTkFont("Segoe UI", 9, "bold"), width=70).pack(side="left", padx=6)
+                ctk.CTkLabel(row, text=(u["created_at"] or "")[:10], text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 10), width=100, anchor="w").pack(side="left", padx=6)
+
+                st_color = "#E8F5E9" if is_active else "#FDE8E8"
+                st_txt = "#2E7D32" if is_active else "#E53E3E"
+                ctk.CTkLabel(row, text="Active" if is_active else "Inactive", fg_color=st_color, text_color=st_txt,
+                             corner_radius=10, font=ctk.CTkFont("Segoe UI", 9, "bold"), width=60).pack(side="left", padx=6)
+
+        # Application Management & Assignment Table
+        app_card = ctk.CTkFrame(h, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
+        app_card.pack(fill="x", pady=(10, 20))
+        ctk.CTkLabel(app_card, text="Application Management & Assignment", text_color="#111827", font=ctk.CTkFont("Segoe UI", 13, "bold")).pack(anchor="w", padx=18, pady=(16, 4))
+        ctk.CTkLabel(app_card, text="Assign business permit applications to specific staff members", text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 11)).pack(anchor="w", padx=18, pady=(0, 16))
+
+        hdr2 = ctk.CTkFrame(app_card, fg_color="#FAFAFA", corner_radius=0)
+        hdr2.pack(fill="x", padx=18)
+        cols2 = [("Application ID", 80), ("Business Name", 150), ("Applicant", 150), ("Status", 120), ("Assigned To", 120), ("Action", 120)]
+        for col, w in cols2:
+            ctk.CTkLabel(hdr2, text=col, text_color="#374151", font=ctk.CTkFont("Segoe UI", 10, "bold"), width=w, anchor="w").pack(side="left", padx=6, pady=6)
+            
+        from database.db import get_all_applications
+        apps_to_assign = [a for a in get_all_applications() if a["status"] in ("Pending", "Under Review", "Returned for Correction")]
+        staff_names = [s["email"] for s in staff_users]
+        if not staff_names:
+            staff_names = ["No staff available"]
+            
+        for am in apps_to_assign:
+            row = ctk.CTkFrame(app_card, fg_color="white")
+            row.pack(fill="x", padx=18, pady=4)
+            ctk.CTkLabel(row, text=f"#{am['id']}", text_color="#111827", font=ctk.CTkFont("Segoe UI", 10, "bold"), width=80, anchor="w").pack(side="left", padx=6)
+            ctk.CTkLabel(row, text=am['business_name'], text_color="#2B6CB0", font=ctk.CTkFont("Segoe UI", 10), width=150, anchor="w").pack(side="left", padx=6)
+            ctk.CTkLabel(row, text=f"{am['owner_first_name']} {am['owner_last_name']}", text_color="#E65C00", font=ctk.CTkFont("Segoe UI", 10), width=150, anchor="w").pack(side="left", padx=6)
+            
+            bg_c = "#F3F4F6"
+            txt_c = "#374151"
+            if am['status'] == "Pending": bg_c, txt_c = "#FFF4E5", "#D9A100"
+            elif am['status'] == "Under Review": bg_c, txt_c = "#EBF5FF", "#1D4ED8"
+            
+            ctk.CTkLabel(row, text=am['status'], fg_color=bg_c, text_color=txt_c, corner_radius=10, font=ctk.CTkFont("Segoe UI", 9, "bold"), width=120).pack(side="left", padx=6)
+            
+            assigned = am.get('assigned_to') or "Unassigned"
+            ctk.CTkLabel(row, text=f"👤 {assigned}", text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 10), width=120, anchor="w").pack(side="left", padx=6)
+            
+            a_om = ctk.CTkOptionMenu(row, values=staff_names, width=120, height=28, fg_color="white", text_color="#111827", button_color="white", dropdown_fg_color="white")
+            a_om.pack(side="left", padx=6)
+            a_om.set("Assign To...")
+            a_om.configure(command=lambda choice, app_id=am['id']: self._assign_app(choice, app_id))
+
+    def _create_staff(self):
+        name = self.entry_staff_name.get().strip()
+        email = self.entry_staff_email.get().strip()
+        pwd = self.entry_staff_pass.get().strip()
+        if not name or not email or not pwd:
+            messagebox.showerror("Error", "All fields are required")
+            return
+        from database.db import create_staff_account
+        success, msg = create_staff_account(email, pwd, name)
+        if success:
+            messagebox.showinfo("Success", "Staff account created!")
             self._render()
+        else:
+            messagebox.showerror("Error", msg)
+
+    def _handle_staff_action(self, choice, m, uid, current_status):
+        m.set("⋮")
+        if choice in ("Deactivate/Suspend", "Activate Account"):
+            new_status = "Inactive" if current_status == "Active" else "Active"
+            from database.db import update_user_status
+            update_user_status(uid, new_status)
+            self._render()
+        elif choice == "Edit Account":
+            self._show_edit_account_modal(uid)
+        elif choice == "Reset Password":
+            self._show_reset_password_modal(uid)
+        elif choice == "View Audit Trail":
+            self._show_audit_trail_modal(uid)
+
+    def _show_edit_account_modal(self, uid):
+        from database.db import get_all_users, update_user_details
+        user = next((u for u in get_all_users() if u["id"] == uid), None)
+        if not user:
+            return
+        modal = ctk.CTkToplevel(self)
+        modal.title(f"Edit Staff Account #{uid}")
+        modal.geometry("420x340")
+        modal.resizable(False, False)
+        modal.grab_set()
+        modal.configure(fg_color="#F4F5F7")
+
+        hdr = ctk.CTkFrame(modal, fg_color="#E65C00", corner_radius=0, height=50)
+        hdr.pack(fill="x")
+        hdr.pack_propagate(False)
+        ctk.CTkLabel(hdr, text=f"✏️  Edit Account #{uid}", text_color="white",
+                     font=ctk.CTkFont("Segoe UI", 14, "bold")).pack(side="left", padx=20, pady=12)
+
+        body = ctk.CTkFrame(modal, fg_color="#F4F5F7")
+        body.pack(fill="both", expand=True, padx=20, pady=16)
+
+        ctk.CTkLabel(body, text="First Name", text_color="#111827", font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 4))
+        fn_entry = ctk.CTkEntry(body, fg_color="white", border_width=1, border_color="#E5E7EB", height=36)
+        fn_entry.pack(fill="x", pady=(0, 10))
+        fn_entry.insert(0, user.get("first_name") or "")
+
+        ctk.CTkLabel(body, text="Last Name", text_color="#111827", font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 4))
+        ln_entry = ctk.CTkEntry(body, fg_color="white", border_width=1, border_color="#E5E7EB", height=36)
+        ln_entry.pack(fill="x", pady=(0, 10))
+        ln_entry.insert(0, user.get("last_name") or "")
+
+        ctk.CTkLabel(body, text="Email", text_color="#111827", font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 4))
+        em_entry = ctk.CTkEntry(body, fg_color="white", border_width=1, border_color="#E5E7EB", height=36)
+        em_entry.pack(fill="x", pady=(0, 10))
+        em_entry.insert(0, user.get("email") or "")
+
+        def save():
+            update_user_details(uid, fn_entry.get().strip(), ln_entry.get().strip(), em_entry.get().strip())
+            modal.destroy()
+            messagebox.showinfo("Updated", "Account details updated.")
+            self._render()
+
+        bf = ctk.CTkFrame(modal, fg_color="#F4F5F7")
+        bf.pack(fill="x", padx=20, pady=(0, 16))
+        ctk.CTkButton(bf, text="Save Changes", fg_color="#2E7D32", hover_color="#1B5E20", text_color="white",
+                      font=ctk.CTkFont("Segoe UI", 11, "bold"), height=36, corner_radius=6, command=save).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(bf, text="Cancel", fg_color="white", hover_color="#EDEDED", text_color="#374151",
+                      border_width=1, border_color="#D0D5DD", font=ctk.CTkFont("Segoe UI", 10),
+                      height=36, corner_radius=6, command=modal.destroy).pack(side="left")
+
+    def _show_reset_password_modal(self, uid):
+        from database.db import reset_user_password
+        modal = ctk.CTkToplevel(self)
+        modal.title(f"Reset Password - User #{uid}")
+        modal.geometry("400x240")
+        modal.resizable(False, False)
+        modal.grab_set()
+        modal.configure(fg_color="#F4F5F7")
+
+        hdr = ctk.CTkFrame(modal, fg_color="#E65C00", corner_radius=0, height=50)
+        hdr.pack(fill="x")
+        hdr.pack_propagate(False)
+        ctk.CTkLabel(hdr, text=f"🔑  Reset Password", text_color="white",
+                     font=ctk.CTkFont("Segoe UI", 14, "bold")).pack(side="left", padx=20, pady=12)
+
+        body = ctk.CTkFrame(modal, fg_color="#F4F5F7")
+        body.pack(fill="both", expand=True, padx=20, pady=16)
+
+        ctk.CTkLabel(body, text="New Password", text_color="#111827", font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 4))
+        pw1 = ctk.CTkEntry(body, fg_color="white", border_width=1, border_color="#E5E7EB", height=36, show="*")
+        pw1.pack(fill="x", pady=(0, 10))
+
+        ctk.CTkLabel(body, text="Confirm Password", text_color="#111827", font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 4))
+        pw2 = ctk.CTkEntry(body, fg_color="white", border_width=1, border_color="#E5E7EB", height=36, show="*")
+        pw2.pack(fill="x", pady=(0, 10))
+
+        def save():
+            if pw1.get() != pw2.get():
+                messagebox.showerror("Error", "Passwords do not match.")
+                return
+            if len(pw1.get()) < 4:
+                messagebox.showerror("Error", "Password must be at least 4 characters.")
+                return
+            reset_user_password(uid, pw1.get())
+            modal.destroy()
+            messagebox.showinfo("Success", "Password has been reset.")
+
+        bf = ctk.CTkFrame(modal, fg_color="#F4F5F7")
+        bf.pack(fill="x", padx=20, pady=(0, 16))
+        ctk.CTkButton(bf, text="Reset Password", fg_color="#E65C00", hover_color="#CC5200", text_color="white",
+                      font=ctk.CTkFont("Segoe UI", 11, "bold"), height=36, corner_radius=6, command=save).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(bf, text="Cancel", fg_color="white", hover_color="#EDEDED", text_color="#374151",
+                      border_width=1, border_color="#D0D5DD", font=ctk.CTkFont("Segoe UI", 10),
+                      height=36, corner_radius=6, command=modal.destroy).pack(side="left")
+
+    def _show_audit_trail_modal(self, uid):
+        from database.db import get_user_activity_log, get_all_users
+        user = next((u for u in get_all_users() if u["id"] == uid), None)
+        logs = get_user_activity_log(uid)
+
+        modal = ctk.CTkToplevel(self)
+        uname = f"{user.get('first_name','')} {user.get('last_name','')}".strip() if user else f"User #{uid}"
+        modal.title(f"Audit Trail - {uname}")
+        modal.geometry("600x450")
+        modal.resizable(False, False)
+        modal.grab_set()
+        modal.configure(fg_color="#F4F5F7")
+
+        hdr = ctk.CTkFrame(modal, fg_color="#E65C00", corner_radius=0, height=50)
+        hdr.pack(fill="x")
+        hdr.pack_propagate(False)
+        ctk.CTkLabel(hdr, text=f"📜  Audit Trail — {uname}", text_color="white",
+                     font=ctk.CTkFont("Segoe UI", 14, "bold")).pack(side="left", padx=20, pady=12)
+
+        body = ctk.CTkScrollableFrame(modal, fg_color="#F4F5F7")
+        body.pack(fill="both", expand=True, padx=16, pady=12)
+
+        if not logs:
+            ctk.CTkLabel(body, text="No activity recorded for this user.", text_color="#9CA3AF",
+                         font=ctk.CTkFont("Segoe UI", 12)).pack(pady=40)
+        else:
+            for log in logs:
+                card = ctk.CTkFrame(body, fg_color="white", corner_radius=8, border_width=1, border_color="#E5E7EB")
+                card.pack(fill="x", pady=3)
+                top_r = ctk.CTkFrame(card, fg_color="white")
+                top_r.pack(fill="x", padx=12, pady=(8, 2))
+                ctk.CTkLabel(top_r, text=f"App #{log['id']} — {log['business_name']}",
+                             text_color="#111827", font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(side="left")
+                st_colors = {"Approved": "#2E7D32", "Rejected": "#E53E3E", "Pending": "#D9A100", "Under Review": "#1D4ED8"}
+                ctk.CTkLabel(top_r, text=log["status"], text_color=st_colors.get(log["status"], "#374151"),
+                             font=ctk.CTkFont("Segoe UI", 9, "bold")).pack(side="right")
+                bot_r = ctk.CTkFrame(card, fg_color="white")
+                bot_r.pack(fill="x", padx=12, pady=(0, 8))
+                ctk.CTkLabel(bot_r, text=f"Reviewed: {(log.get('reviewed_at') or 'N/A')[:16]}  |  Submitted: {(log.get('submitted_at') or '')[:10]}",
+                             text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 9)).pack(side="left")
+
+        ctk.CTkButton(modal, text="Close", fg_color="white", hover_color="#EDEDED", text_color="#374151",
+                      border_width=1, border_color="#D0D5DD", font=ctk.CTkFont("Segoe UI", 10),
+                      height=36, corner_radius=6, command=modal.destroy).pack(pady=(0, 12))
+
+    def _assign_app(self, choice, app_id):
+        from database.db import assign_application
+        assign_application(app_id, choice)
+        self._render()
 
     # ── Permit Holders view ──────────────────────────────────
     def _render_permits(self):
@@ -426,14 +704,10 @@ class AdminFrame(ctk.CTkFrame):
                 row.pack(fill="x", padx=18, pady=2)
                 ctk.CTkLabel(row, text=f"#{a['id']}  {a['business_name']}  —  {a['user_email']}",
                              text_color="#374151", font=ctk.CTkFont("Segoe UI", 10)).pack(side="left", padx=10, pady=6)
-                ctk.CTkButton(row, text="Approve", width=70, height=26,
-                              fg_color="#E8F5E9", hover_color="#C8E6C9", text_color="#2E7D32",
-                              font=ctk.CTkFont("Segoe UI", 9), corner_radius=4,
-                              command=lambda a=a: self._approve_app(a)).pack(side="right", padx=4, pady=4)
-                ctk.CTkButton(row, text="Reject", width=70, height=26,
-                              fg_color="#FDE8E8", hover_color="#FECACA", text_color="#E53E3E",
-                              font=ctk.CTkFont("Segoe UI", 9), corner_radius=4,
-                              command=lambda a=a: self._reject_app(a)).pack(side="right", padx=4, pady=4)
+                ctk.CTkButton(row, text="📋 Review", width=90, height=26,
+                              fg_color="#EBF5FF", hover_color="#DBEAFE", text_color="#1D4ED8",
+                              font=ctk.CTkFont("Segoe UI", 9, "bold"), corner_radius=4,
+                              command=lambda a=a: self._open_review_modal(a)).pack(side="right", padx=4, pady=4)
 
         # Active permits
         card = ctk.CTkFrame(h, fg_color="white", corner_radius=10,
@@ -444,10 +718,10 @@ class AdminFrame(ctk.CTkFrame):
             anchor="w", padx=18, pady=(16, 12))
         hdr = ctk.CTkFrame(card, fg_color="#FAFAFA", corner_radius=0)
         hdr.pack(fill="x", padx=18)
-        for col in ["Permit #", "Business", "Owner", "Issued", "Expires", "Status"]:
+        for col, w in [("Permit #", 100), ("Business", 130), ("Owner", 130), ("Issued", 90), ("Expires", 90), ("Status", 80), ("Actions", 100)]:
             ctk.CTkLabel(hdr, text=col, text_color="#374151",
                          font=ctk.CTkFont("Segoe UI", 10, "bold"),
-                         width=120, anchor="w").pack(side="left", padx=4, pady=6)
+                         width=w, anchor="w").pack(side="left", padx=4, pady=6)
         if not permits:
             ctk.CTkLabel(card, text="No permits issued yet", text_color="#9CA3AF",
                          font=ctk.CTkFont("Segoe UI", 11)).pack(pady=30)
@@ -455,11 +729,154 @@ class AdminFrame(ctk.CTkFrame):
             for p in permits:
                 row = ctk.CTkFrame(card, fg_color="white")
                 row.pack(fill="x", padx=18, pady=1)
-                for val in [p["permit_number"], p["business_name"], p["user_email"],
-                            (p["issued_at"] or "")[:10], (p["expires_at"] or "")[:10], p["status"]]:
-                    ctk.CTkLabel(row, text=str(val), text_color="#374151",
-                                 font=ctk.CTkFont("Segoe UI", 10),
-                                 width=120, anchor="w").pack(side="left", padx=4, pady=4)
+                ctk.CTkLabel(row, text=p["permit_number"], text_color="#1D4ED8", font=ctk.CTkFont("Segoe UI", 10, "bold"), width=100, anchor="w").pack(side="left", padx=4, pady=4)
+                ctk.CTkLabel(row, text=p["business_name"], text_color="#374151", font=ctk.CTkFont("Segoe UI", 10), width=130, anchor="w").pack(side="left", padx=4, pady=4)
+                ctk.CTkLabel(row, text=p["user_email"], text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 10), width=130, anchor="w").pack(side="left", padx=4, pady=4)
+                ctk.CTkLabel(row, text=(p["issued_at"] or "")[:10], text_color="#374151", font=ctk.CTkFont("Segoe UI", 10), width=90, anchor="w").pack(side="left", padx=4, pady=4)
+                ctk.CTkLabel(row, text=(p["expires_at"] or "")[:10], text_color="#374151", font=ctk.CTkFont("Segoe UI", 10), width=90, anchor="w").pack(side="left", padx=4, pady=4)
+                st_bg = "#E8F5E9" if p["status"] == "Active" else "#FDE8E8"
+                st_tc = "#2E7D32" if p["status"] == "Active" else "#E53E3E"
+                ctk.CTkLabel(row, text=p["status"], fg_color=st_bg, text_color=st_tc, corner_radius=10, font=ctk.CTkFont("Segoe UI", 9, "bold"), width=70).pack(side="left", padx=4, pady=4)
+                ctk.CTkButton(row, text="👁", width=30, height=24, fg_color="#EBF5FF", hover_color="#DBEAFE", text_color="#1D4ED8", corner_radius=4, command=lambda p=p: messagebox.showinfo("Permit Details", f"Permit: {p['permit_number']}\nBusiness: {p['business_name']}\nOwner: {p['user_email']}\nIssued: {(p['issued_at'] or '')[:10]}\nExpires: {(p['expires_at'] or '')[:10]}\nStatus: {p['status']}")).pack(side="left", padx=2, pady=4)
+                ctk.CTkButton(row, text="🖨", width=30, height=24, fg_color="#F3F4F6", hover_color="#E5E7EB", text_color="#374151", corner_radius=4, command=lambda p=p: self._print_permit(p)).pack(side="left", padx=2, pady=4)
+
+    def _open_review_modal(self, app):
+        modal = ctk.CTkToplevel(self)
+        modal.title(f"Review Application #{app['id']}")
+        modal.geometry("620x680")
+        modal.resizable(False, False)
+        modal.grab_set()
+        modal.configure(fg_color="#F4F5F7")
+
+        # Header
+        hdr = ctk.CTkFrame(modal, fg_color="#E65C00", corner_radius=0, height=60)
+        hdr.pack(fill="x")
+        hdr.pack_propagate(False)
+        ctk.CTkLabel(hdr, text=f"📋  Review Application #{app['id']}",
+                     text_color="white",
+                     font=ctk.CTkFont("Segoe UI", 16, "bold")).pack(side="left", padx=20, pady=15)
+        status_bg = {"Pending": "#FFF4E5", "Under Review": "#EBF5FF", "Approved": "#E8F5E9", "Rejected": "#FDE8E8"}
+        status_tc = {"Pending": "#D9A100", "Under Review": "#1D4ED8", "Approved": "#2E7D32", "Rejected": "#E53E3E"}
+        st = app.get("status", "Pending")
+        ctk.CTkLabel(hdr, text=st, fg_color=status_bg.get(st, "#F3F4F6"),
+                     text_color=status_tc.get(st, "#374151"),
+                     corner_radius=12, font=ctk.CTkFont("Segoe UI", 10, "bold"),
+                     width=90, height=26).pack(side="right", padx=20)
+
+        # Scrollable body
+        body = ctk.CTkScrollableFrame(modal, fg_color="#F4F5F7")
+        body.pack(fill="both", expand=True, padx=16, pady=(12, 0))
+
+        def section(parent, title, icon=""):
+            f = ctk.CTkFrame(parent, fg_color="white", corner_radius=10,
+                             border_width=1, border_color="#E5E7EB")
+            f.pack(fill="x", pady=(0, 10))
+            ctk.CTkLabel(f, text=f"{icon}  {title}", text_color="#111827",
+                         font=ctk.CTkFont("Segoe UI", 12, "bold")).pack(
+                anchor="w", padx=16, pady=(14, 8))
+            return f
+
+        def field(parent, label, value):
+            row = ctk.CTkFrame(parent, fg_color="white")
+            row.pack(fill="x", padx=16, pady=2)
+            ctk.CTkLabel(row, text=label, text_color="#6B7280",
+                         font=ctk.CTkFont("Segoe UI", 10), width=160, anchor="w").pack(side="left")
+            ctk.CTkLabel(row, text=str(value or "—"), text_color="#111827",
+                         font=ctk.CTkFont("Segoe UI", 10, "bold"), anchor="w").pack(side="left", fill="x", expand=True)
+
+        # Business Information
+        s1 = section(body, "Business Information", "🏢")
+        field(s1, "Business Name", app.get("business_name"))
+        field(s1, "Business Type", app.get("business_type"))
+        field(s1, "Ownership Type", app.get("ownership_type"))
+        field(s1, "Business Address", app.get("business_address"))
+        ctk.CTkFrame(s1, fg_color="white", height=8).pack()
+
+        # Owner Details
+        s2 = section(body, "Owner Details", "👤")
+        owner = f"{app.get('owner_first_name', '')} {app.get('owner_last_name', '')}".strip()
+        field(s2, "Full Name", owner)
+        field(s2, "Email", app.get("user_email"))
+        field(s2, "Contact Number", app.get("contact_number"))
+        field(s2, "Gender", app.get("gender"))
+        ctk.CTkFrame(s2, fg_color="white", height=8).pack()
+
+        # Financial & Registration
+        s3 = section(body, "Financial & Registration", "💰")
+        cap = app.get("capital_investment", 0)
+        field(s3, "Capital Investment", f"₱{cap:,.2f}" if cap else "—")
+        male = app.get("employees_male", 0) or 0
+        female = app.get("employees_female", 0) or 0
+        field(s3, "Employees (M / F)", f"{male} Male  /  {female} Female")
+        field(s3, "Total Employees", str(male + female))
+        field(s3, "TIN Number", app.get("tin_number"))
+        field(s3, "DTI/SEC/CDA Reg. No.", app.get("dti_sec_cda_reg_no"))
+        ctk.CTkFrame(s3, fg_color="white", height=8).pack()
+
+        # Application Meta
+        s4 = section(body, "Application Meta", "📊")
+        field(s4, "Submitted At", (app.get("submitted_at") or "")[:19])
+        field(s4, "Assigned To", app.get("assigned_to") or "Unassigned")
+        field(s4, "Risk Level", app.get("risk_level", "Low"))
+        field(s4, "Remarks", app.get("remarks") or "None")
+        ctk.CTkFrame(s4, fg_color="white", height=8).pack()
+
+        # Notes field
+        notes_frame = ctk.CTkFrame(body, fg_color="white", corner_radius=10,
+                                   border_width=1, border_color="#E5E7EB")
+        notes_frame.pack(fill="x", pady=(0, 10))
+        ctk.CTkLabel(notes_frame, text="📝  Reviewer Notes", text_color="#111827",
+                     font=ctk.CTkFont("Segoe UI", 12, "bold")).pack(
+            anchor="w", padx=16, pady=(14, 6))
+        notes_entry = ctk.CTkTextbox(notes_frame, height=60, fg_color="#F9FAFB",
+                                     border_width=1, border_color="#E5E7EB",
+                                     font=ctk.CTkFont("Segoe UI", 10),
+                                     text_color="#374151", corner_radius=6)
+        notes_entry.pack(fill="x", padx=16, pady=(0, 14))
+        if app.get("notes"):
+            notes_entry.insert("1.0", app["notes"])
+
+        # Action buttons
+        btn_frame = ctk.CTkFrame(modal, fg_color="#F4F5F7")
+        btn_frame.pack(fill="x", padx=16, pady=(8, 16))
+
+        def do_approve():
+            modal.destroy()
+            self._approve_app(app)
+
+        def do_reject():
+            modal.destroy()
+            self._reject_app(app)
+
+        def do_return():
+            notes = notes_entry.get("1.0", "end-1c").strip()
+            update_application_status(app["id"], "Returned for Correction",
+                                      self.controller.logged_in_user or "admin@bbp.com")
+            add_notification(app["user_email"], "Application Returned",
+                             f"Your application for '{app['business_name']}' was returned for correction. Notes: {notes}")
+            add_notification("admin", "Application Returned",
+                             f"Application #{app['id']} for '{app['business_name']}' returned for correction.")
+            modal.destroy()
+            messagebox.showinfo("Returned", "Application returned for correction.")
+            self._render()
+
+        ctk.CTkButton(btn_frame, text="✓  Approve & Issue Permit", width=180, height=38,
+                      fg_color="#2E7D32", hover_color="#1B5E20", text_color="white",
+                      font=ctk.CTkFont("Segoe UI", 11, "bold"), corner_radius=6,
+                      command=do_approve).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(btn_frame, text="↩  Return for Correction", width=170, height=38,
+                      fg_color="#FFF4E5", hover_color="#FDECD0", text_color="#D9A100",
+                      font=ctk.CTkFont("Segoe UI", 11, "bold"), corner_radius=6,
+                      command=do_return).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(btn_frame, text="✕  Reject", width=100, height=38,
+                      fg_color="#FDE8E8", hover_color="#FECACA", text_color="#E53E3E",
+                      font=ctk.CTkFont("Segoe UI", 11, "bold"), corner_radius=6,
+                      command=do_reject).pack(side="left")
+        ctk.CTkButton(btn_frame, text="Close", width=80, height=38,
+                      fg_color="white", hover_color="#EDEDED", text_color="#374151",
+                      border_width=1, border_color="#D0D5DD",
+                      font=ctk.CTkFont("Segoe UI", 10), corner_radius=6,
+                      command=modal.destroy).pack(side="right")
 
     def _approve_app(self, app):
         update_application_status(app["id"], "Approved", self.controller.logged_in_user or "admin@bbp.com")
@@ -486,55 +903,78 @@ class AdminFrame(ctk.CTkFrame):
         st = get_application_stats()
         apps = get_all_applications()
 
-        card = ctk.CTkFrame(h, fg_color="white", corner_radius=10,
-                            border_width=1, border_color="#E5E7EB")
-        card.pack(fill="x", pady=(0, 12))
-        ctk.CTkLabel(card, text="Application Summary Report", text_color="#111827",
-                     font=ctk.CTkFont("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=18, pady=(16, 8))
-        for label, val in [("Total Applications", st["total"]),
-                           ("Pending", st["pending"]),
-                           ("Approved", st["approved"]),
-                           ("Rejected", st["rejected"]),
-                           ("Approval Rate", f"{st['rate']}%"),
-                           ("Unique Business Types", st["types"]),
-                           ("Unique Owners", st["owners"]),
-                           ("High-Risk Flagged", st["high_risk"])]:
-            row = ctk.CTkFrame(card, fg_color="white")
-            row.pack(fill="x", padx=18, pady=2)
-            ctk.CTkLabel(row, text=str(label), text_color="#374151",
-                         font=ctk.CTkFont("Segoe UI", 10), width=200, anchor="w").pack(side="left", padx=6)
-            ctk.CTkLabel(row, text=str(val), text_color="#111827",
-                         font=ctk.CTkFont("Segoe UI", 10, "bold"), anchor="w").pack(side="left")
+        # Export & Archive Reports
+        export_box = ctk.CTkFrame(h, fg_color="#FFF9F0", corner_radius=10, border_width=1, border_color="#FDECD0")
+        export_box.pack(fill="x", pady=(0, 12))
+        ctk.CTkLabel(export_box, text="📥 Export & Archive Reports", text_color="#E65C00", font=ctk.CTkFont("Segoe UI", 12, "bold")).pack(anchor="w", padx=18, pady=(16, 8))
+        
+        btns = ctk.CTkFrame(export_box, fg_color="transparent")
+        btns.pack(fill="x", padx=18, pady=(0, 16))
+        ctk.CTkButton(btns, text="📄 Print Official Report", fg_color="#E65C00", hover_color="#CC5200", text_color="white", font=ctk.CTkFont("Segoe UI", 11, "bold"), height=36, command=self._print_report).pack(side="left", padx=(0, 10))
+        ctk.CTkButton(btns, text="📥 Export as CSV", fg_color="#2E7D32", hover_color="#1B5E20", text_color="white", font=ctk.CTkFont("Segoe UI", 11, "bold"), height=36, command=self._export_csv).pack(side="left", padx=(0, 10))
+        ctk.CTkButton(btns, text="📄 Export as PDF", fg_color="white", text_color="#374151", border_width=1, border_color="#E5E7EB", font=ctk.CTkFont("Segoe UI", 11, "bold"), height=36, command=self._export_pdf).pack(side="left")
+        ctk.CTkLabel(export_box, text="● Reports are pre-formatted for COA and City Hall submission with official watermark", text_color="#E65C00", font=ctk.CTkFont("Segoe UI", 9, slant="italic")).pack(anchor="w", padx=18, pady=(0, 16))
+        # Filters
+        filter_box = ctk.CTkFrame(h, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
+        filter_box.pack(fill="x", pady=(0, 12))
+        ctk.CTkLabel(filter_box, text="Filter Report Filters", text_color="#E65C00", font=ctk.CTkFont("Segoe UI", 11, "bold")).pack(anchor="w", padx=18, pady=(16, 8))
+        
+        f_row = ctk.CTkFrame(filter_box, fg_color="transparent")
+        f_row.pack(fill="x", padx=18, pady=(0, 16))
+        
+        def _add_filter(parent, label, vals):
+            f = ctk.CTkFrame(parent, fg_color="transparent")
+            f.pack(side="left", fill="x", expand=True, padx=(0, 10))
+            ctk.CTkLabel(f, text=label, text_color="#374151", font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w")
+            ctk.CTkOptionMenu(f, values=vals, fg_color="#F9FAFB", text_color="#111827", button_color="#F9FAFB", height=32).pack(fill="x")
+            
+        _add_filter(f_row, "Date Range", ["All Time"])
+        _add_filter(f_row, "Status", ["All Status"])
+        _add_filter(f_row, "Business Type", ["All Types"])
+        _add_filter(f_row, "Risk Level", ["All Levels"])
+        
+        ctk.CTkButton(filter_box, text="Reset Filters", fg_color="white", text_color="#374151", border_width=1, border_color="#E5E7EB", width=100, height=30).pack(anchor="w", padx=18, pady=(0, 16))
 
-        # All applications log
-        log = ctk.CTkFrame(h, fg_color="white", corner_radius=10,
-                           border_width=1, border_color="#E5E7EB")
-        log.pack(fill="x", pady=(0, 12))
-        ctk.CTkLabel(log, text=f"All Applications Log ({len(apps)})", text_color="#111827",
-                     font=ctk.CTkFont("Segoe UI", 13, "bold")).pack(
-            anchor="w", padx=18, pady=(16, 8))
-        if not apps:
-            ctk.CTkLabel(log, text="No applications submitted yet", text_color="#9CA3AF",
-                         font=ctk.CTkFont("Segoe UI", 11)).pack(pady=30)
-        else:
-            hdr = ctk.CTkFrame(log, fg_color="#FAFAFA", corner_radius=0)
-            hdr.pack(fill="x", padx=18)
-            for col in ["ID", "Business", "Owner", "Status", "Submitted"]:
-                ctk.CTkLabel(hdr, text=col, text_color="#374151",
-                             font=ctk.CTkFont("Segoe UI", 10, "bold"),
-                             width=140, anchor="w").pack(side="left", padx=4, pady=6)
-            for a in apps:
-                row = ctk.CTkFrame(log, fg_color="white")
-                row.pack(fill="x", padx=18, pady=1)
-                status_colors = {"Pending": "#D9A100", "Approved": "#2E7D32", "Rejected": "#E53E3E"}
-                for val, color in [(str(a["id"]), "#374151"), (a["business_name"], "#374151"),
-                                   (a["user_email"], "#6B7280"),
-                                   (a["status"], status_colors.get(a["status"], "#374151")),
-                                   ((a["submitted_at"] or "")[:10], "#9CA3AF")]:
-                    ctk.CTkLabel(row, text=val, text_color=color,
-                                 font=ctk.CTkFont("Segoe UI", 10),
-                                 width=140, anchor="w").pack(side="left", padx=4, pady=3)
+        # Stats
+        stat_row = ctk.CTkFrame(h, fg_color="transparent")
+        stat_row.pack(fill="x", pady=(0, 12))
+        for i in range(4): stat_row.grid_columnconfigure(i, weight=1)
+        self._stat_card(stat_row, 0, "Applications in View", str(st["total"]), "", "#F9FAFB", "#111827")
+        self._stat_card(stat_row, 1, "Approved/Ready", str(st["approved"]), "", "#F9FAFB", "#2E7D32")
+        self._stat_card(stat_row, 2, "Success Rate", f"{st['rate']}%", "", "#F9FAFB", "#E65C00")
+        self._stat_card(stat_row, 3, "High Risk Apps", str(st.get("high_risk", 0)), "", "#F9FAFB", "#E53E3E")
+
+        # Table
+        log = ctk.CTkFrame(h, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
+        log.pack(fill="x", pady=(0, 20))
+        
+        top_hdr = ctk.CTkFrame(log, fg_color="#FFF9F0", corner_radius=10)
+        top_hdr.pack(fill="x", padx=18, pady=(16, 8))
+        ctk.CTkLabel(top_hdr, text="📄 Issued Business Permits - Barangay 183", text_color="#111827", font=ctk.CTkFont("Segoe UI", 13, "bold")).pack(side="left", padx=10, pady=10)
+        ctk.CTkLabel(top_hdr, text="Report Type: Administrative Summary", text_color="#E65C00", font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(side="right", padx=10)
+
+        hdr = ctk.CTkFrame(log, fg_color="#E65C00", corner_radius=0)
+        hdr.pack(fill="x", padx=18)
+        cols = [("ID", 40), ("Business Name", 140), ("Owner", 140), ("Business Type", 100), ("App. Type", 80), ("Address", 140), ("Date Issued", 80), ("Status", 120)]
+        for col, w in cols:
+            ctk.CTkLabel(hdr, text=col, text_color="white", font=ctk.CTkFont("Segoe UI", 10, "bold"), width=w, anchor="w").pack(side="left", padx=4, pady=8)
+            
+        mock_reports = get_all_applications()
+        
+        for m in mock_reports:
+            row = ctk.CTkFrame(log, fg_color="white")
+            row.pack(fill="x", padx=18, pady=2)
+            c_vals = [
+                (str(m["id"]), "#6B7280", 40), (m["business_name"], "#374151", 140), (f"{m['owner_first_name']} {m['owner_last_name']}", "#6B7280", 140), 
+                (m["business_type"] or "Retail", "#6B7280", 100), ("New", "#6B7280", 80), (m["business_address"][:15]+"...", "#6B7280", 140), 
+                ((m["submitted_at"] or "")[:10], "#6B7280", 80)
+            ]
+            for val, color, w in c_vals:
+                ctk.CTkLabel(row, text=val, text_color=color, font=ctk.CTkFont("Segoe UI", 10), width=w, anchor="w").pack(side="left", padx=4, pady=4)
+            
+            sc = {"Pending": "#D9A100", "Under Review": "#1D4ED8", "Approved": "#2E7D32", "Returned for Correction": "#374151"}
+            status = m["status"]
+            ctk.CTkLabel(row, text=status, text_color=sc.get(status, "#111827"), font=ctk.CTkFont("Segoe UI", 9, "bold"), width=120, anchor="w").pack(side="left", padx=4)
 
     # ── Placeholder view ─────────────────────────────────────
     def _render_placeholder(self, title):
@@ -544,3 +984,117 @@ class AdminFrame(ctk.CTkFrame):
         ctk.CTkLabel(card, text=f"{title} content coming soon",
                      text_color="#9CA3AF",
                      font=ctk.CTkFont("Segoe UI", 13)).pack(pady=80)
+
+    def _print_permit(self, p):
+        import os, tempfile, webbrowser
+        from datetime import datetime
+        html = f"""<html><head><title>Barangay Business Clearance</title>
+<style>body{{font-family:Arial;padding:50px;color:#111827;max-width:700px;margin:auto}}
+h1{{text-align:center;color:#E65C00;margin-bottom:4px}}
+h3{{text-align:center;color:#374151;margin-top:0}}
+.info{{margin:30px 0}}.info td{{padding:6px 12px}}.info td:first-child{{font-weight:bold;color:#374151;width:200px}}
+.footer{{text-align:center;margin-top:60px;color:#9CA3AF;font-size:11px;border-top:1px solid #E5E7EB;padding-top:16px}}
+.seal{{text-align:center;margin-top:40px;color:#6B7280}}
+@media print{{body{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}}}</style></head>
+<body>
+<h1>BARANGAY 183</h1>
+<h3>Zone 16, District 1, Caloocan City</h3>
+<hr>
+<h2 style="text-align:center">BARANGAY BUSINESS CLEARANCE</h2>
+<table class="info"><tr><td>Permit Number:</td><td>{p['permit_number']}</td></tr>
+<tr><td>Business Name:</td><td>{p['business_name']}</td></tr>
+<tr><td>Owner / Email:</td><td>{p['user_email']}</td></tr>
+<tr><td>Date Issued:</td><td>{(p['issued_at'] or '')[:10]}</td></tr>
+<tr><td>Valid Until:</td><td>{(p['expires_at'] or '')[:10]}</td></tr>
+<tr><td>Status:</td><td><b>{p['status']}</b></td></tr></table>
+<div class="seal"><p>_________________________</p><p>Barangay Captain</p><p>Barangay 183, Caloocan City</p></div>
+<div class="footer">This document is system-generated. Not valid without dry seal and signature.<br>Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</div>
+<script>window.onload=function(){{window.print()}}</script></body></html>"""
+        fd, path = tempfile.mkstemp(suffix=".html")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(html)
+        webbrowser.open("file://" + os.path.realpath(path))
+
+    # ── Export functions ──────────────────────────────────────
+    def _get_report_data(self):
+        from database.db import get_all_applications, get_all_permits, get_application_stats
+        return get_all_applications(), get_all_permits(), get_application_stats()
+
+    def _export_csv(self):
+        import csv, os
+        from tkinter import filedialog
+        apps, permits, _ = self._get_report_data()
+        path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")],
+                                            initialfile="bbp_report.csv", title="Save CSV Report")
+        if not path:
+            return
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["Application ID", "Business Name", "Owner", "Type", "Status", "Capital", "Submitted", "Reviewed By"])
+            for a in apps:
+                owner = f"{a.get('owner_first_name','')} {a.get('owner_last_name','')}".strip()
+                w.writerow([a["id"], a["business_name"], owner, a.get("business_type",""),
+                            a["status"], a.get("capital_investment",0),
+                            (a.get("submitted_at") or "")[:10], a.get("reviewed_by","")])
+            w.writerow([])
+            w.writerow(["Permit #", "Business", "Owner Email", "Issued", "Expires", "Status"])
+            for p in permits:
+                w.writerow([p["permit_number"], p["business_name"], p["user_email"],
+                            (p.get("issued_at") or "")[:10], (p.get("expires_at") or "")[:10], p["status"]])
+        messagebox.showinfo("Exported", f"CSV report saved to:\n{path}")
+
+    def _build_report_html(self):
+        from datetime import datetime
+        apps, permits, st = self._get_report_data()
+        rows_html = ""
+        for a in apps:
+            owner = f"{a.get('owner_first_name','')} {a.get('owner_last_name','')}".strip()
+            rows_html += f"<tr><td>{a['id']}</td><td>{a['business_name']}</td><td>{owner}</td><td>{a['status']}</td><td>{(a.get('submitted_at') or '')[:10]}</td></tr>\n"
+        permit_rows = ""
+        for p in permits:
+            permit_rows += f"<tr><td>{p['permit_number']}</td><td>{p['business_name']}</td><td>{p['user_email']}</td><td>{(p.get('issued_at') or '')[:10]}</td><td>{p['status']}</td></tr>\n"
+        return f"""<html><head><title>BBP System Report</title>
+<style>body{{font-family:Arial,sans-serif;padding:40px;color:#111827}}
+h1{{color:#E65C00;text-align:center}}h2{{color:#374151;border-bottom:2px solid #E5E7EB;padding-bottom:6px}}
+table{{width:100%;border-collapse:collapse;margin-bottom:30px}}
+th{{background:#FFF4E5;color:#E65C00;text-align:left;padding:8px 10px;border:1px solid #E5E7EB}}
+td{{padding:6px 10px;border:1px solid #E5E7EB}}
+.stats{{display:flex;gap:20px;margin-bottom:30px}}
+.stat-box{{flex:1;background:#FFF9F0;border:1px solid #FDECD0;border-radius:8px;padding:16px;text-align:center}}
+.stat-val{{font-size:28px;font-weight:bold;color:#E65C00}}.stat-lbl{{color:#6B7280;font-size:12px}}
+.footer{{text-align:center;color:#9CA3AF;font-size:11px;margin-top:40px;border-top:1px solid #E5E7EB;padding-top:12px}}
+@media print{{body{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}}}</style></head>
+<body>
+<h1>Barangay 183 Business Permit System — Official Report</h1>
+<p style="text-align:center;color:#6B7280">Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</p>
+<div class="stats">
+<div class="stat-box"><div class="stat-val">{st['total']}</div><div class="stat-lbl">Total Applications</div></div>
+<div class="stat-box"><div class="stat-val">{st['approved']}</div><div class="stat-lbl">Approved</div></div>
+<div class="stat-box"><div class="stat-val">{st['pending']}</div><div class="stat-lbl">Pending</div></div>
+<div class="stat-box"><div class="stat-val">{st['rate']}%</div><div class="stat-lbl">Approval Rate</div></div>
+</div>
+<h2>Applications</h2>
+<table><tr><th>ID</th><th>Business Name</th><th>Owner</th><th>Status</th><th>Submitted</th></tr>
+{rows_html}</table>
+<h2>Issued Permits</h2>
+<table><tr><th>Permit #</th><th>Business</th><th>Owner Email</th><th>Issued</th><th>Status</th></tr>
+{permit_rows}</table>
+<div class="footer">Barangay 183, Zone 16, Caloocan City &bull; Official Report &bull; NOT VALID WITHOUT DRY SEAL</div>
+</body></html>"""
+
+    def _print_report(self):
+        import os, tempfile, webbrowser
+        html = self._build_report_html().replace("</body>", '<script>window.onload=function(){window.print()}</script></body>')
+        fd, path = tempfile.mkstemp(suffix=".html")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(html)
+        webbrowser.open("file://" + os.path.realpath(path))
+
+    def _export_pdf(self):
+        import os, tempfile, webbrowser
+        html = self._build_report_html()
+        fd, path = tempfile.mkstemp(suffix=".html")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(html)
+        webbrowser.open("file://" + os.path.realpath(path))
+        messagebox.showinfo("Export as PDF", "The report opened in your browser.\nUse Ctrl+P → 'Save as PDF' to save it.")

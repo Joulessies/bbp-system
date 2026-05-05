@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from database.db import register_user
+from ui.terms import show_terms_modal
 
 class RegisterFrame(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -129,9 +130,9 @@ class RegisterFrame(ctk.CTkFrame):
         self.tc_var = ctk.BooleanVar(value=False)
         ctk.CTkCheckBox(tc_frame, text="", variable=self.tc_var, width=20, border_color="#d1d5db", fg_color="#e65c00", hover_color="#cc5200").pack(side="left")
         ctk.CTkLabel(tc_frame, text="I agree to the ", font=ctk.CTkFont(family="Segoe UI", size=12), text_color="#4b5563").pack(side="left")
-        ctk.CTkLabel(tc_frame, text="Terms and Conditions", font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"), text_color="#e65c00").pack(side="left")
+        ctk.CTkButton(tc_frame, text="Terms and Conditions", font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"), text_color="#e65c00", fg_color="transparent", hover_color="#f9fafb", width=0, command=lambda: show_terms_modal(self)).pack(side="left")
         ctk.CTkLabel(tc_frame, text=" and ", font=ctk.CTkFont(family="Segoe UI", size=12), text_color="#4b5563").pack(side="left")
-        ctk.CTkLabel(tc_frame, text="Privacy Policy", font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"), text_color="#e65c00").pack(side="left")
+        ctk.CTkButton(tc_frame, text="Privacy Policy", font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"), text_color="#e65c00", fg_color="transparent", hover_color="#f9fafb", width=0, command=lambda: show_terms_modal(self)).pack(side="left")
 
         # Create account button
         ctk.CTkButton(inner_card, text="Create Account", command=self.handle_register, fg_color="#e65c00", hover_color="#cc5200", text_color="white", font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"), height=45, corner_radius=6).pack(fill="x", pady=(0, 15))

@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from database.db import check_login
+from ui.terms import show_terms_modal
 
 class LoginFrame(ctk.CTkFrame):
     def __init__(self, parent, controller):
@@ -54,10 +55,16 @@ class LoginFrame(ctk.CTkFrame):
         options_frame = ctk.CTkFrame(inner_card, fg_color="transparent")
         options_frame.pack(fill="x", pady=(5, 20))
         ctk.CTkCheckBox(options_frame, text="Remember me", font=ctk.CTkFont(family="Segoe UI", size=12), text_color="#4b5563", border_color="#d1d5db", fg_color="#e65c00", hover_color="#cc5200").pack(side="left")
-        ctk.CTkButton(options_frame, text="Forgot password?", font=ctk.CTkFont(family="Segoe UI", size=12), text_color="#e65c00", fg_color="transparent", hover_color="#f9fafb", width=0).pack(side="right")
+        ctk.CTkButton(options_frame, text="Forgot password?", font=ctk.CTkFont(family="Segoe UI", size=12), text_color="#e65c00", fg_color="transparent", hover_color="#f9fafb", width=0, command=self._forgot_password).pack(side="right")
 
         # Login button
-        ctk.CTkButton(inner_card, text="Sign In", command=self.handle_login, fg_color="#e65c00", hover_color="#cc5200", text_color="white", font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"), height=45, corner_radius=6).pack(fill="x", pady=(0, 20))
+        ctk.CTkButton(inner_card, text="Sign In", command=self.handle_login, fg_color="#e65c00", hover_color="#cc5200", text_color="white", font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"), height=45, corner_radius=6).pack(fill="x", pady=(0, 10))
+
+        # Terms and conditions for Login
+        tc_frame = ctk.CTkFrame(inner_card, fg_color="transparent")
+        tc_frame.pack(fill="x", pady=(0, 20))
+        ctk.CTkLabel(tc_frame, text="By signing in, you agree to our ", font=ctk.CTkFont(family="Segoe UI", size=11), text_color="#6b7280").pack(side="left")
+        ctk.CTkButton(tc_frame, text="Terms and Conditions", font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"), text_color="#e65c00", fg_color="transparent", hover_color="#f9fafb", width=0, command=self._show_terms).pack(side="left")
 
         # Register link
         register_frame = ctk.CTkFrame(inner_card, fg_color="transparent")
@@ -87,3 +94,64 @@ class LoginFrame(ctk.CTkFrame):
                 self.controller.show_frame("DashboardFrame")
         else:
             messagebox.showerror("Error", "Invalid email or password")
+
+    def _show_terms(self):
+        show_terms_modal(self)
+
+    def _forgot_password(self):
+        import customtkinter as ctk
+        from database.db import reset_password_by_email
+
+        modal = ctk.CTkToplevel(self)
+        modal.title("Reset Password")
+        modal.geometry("420x320")
+        modal.resizable(False, False)
+        modal.grab_set()
+        modal.configure(fg_color="#F4F5F7")
+
+        hdr = ctk.CTkFrame(modal, fg_color="#E65C00", corner_radius=0, height=50)
+        hdr.pack(fill="x")
+        hdr.pack_propagate(False)
+        ctk.CTkLabel(hdr, text="🔑  Reset Your Password", text_color="white",
+                     font=ctk.CTkFont("Segoe UI", 14, "bold")).pack(side="left", padx=20, pady=12)
+
+        body = ctk.CTkFrame(modal, fg_color="#F4F5F7")
+        body.pack(fill="both", expand=True, padx=20, pady=16)
+
+        ctk.CTkLabel(body, text="Enter your registered email", text_color="#111827",
+                     font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 4))
+        email_e = ctk.CTkEntry(body, fg_color="white", border_width=1, border_color="#E5E7EB", height=36,
+                               placeholder_text="your@email.com")
+        email_e.pack(fill="x", pady=(0, 12))
+
+        ctk.CTkLabel(body, text="New Password", text_color="#111827",
+                     font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 4))
+        pw1 = ctk.CTkEntry(body, fg_color="white", border_width=1, border_color="#E5E7EB", height=36, show="*")
+        pw1.pack(fill="x", pady=(0, 12))
+
+        ctk.CTkLabel(body, text="Confirm New Password", text_color="#111827",
+                     font=ctk.CTkFont("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 4))
+        pw2 = ctk.CTkEntry(body, fg_color="white", border_width=1, border_color="#E5E7EB", height=36, show="*")
+        pw2.pack(fill="x", pady=(0, 10))
+
+        def do_reset():
+            if pw1.get() != pw2.get():
+                messagebox.showerror("Error", "Passwords do not match.")
+                return
+            if len(pw1.get()) < 4:
+                messagebox.showerror("Error", "Password must be at least 4 characters.")
+                return
+            ok, msg = reset_password_by_email(email_e.get().strip(), pw1.get())
+            if ok:
+                modal.destroy()
+                messagebox.showinfo("Success", msg)
+            else:
+                messagebox.showerror("Error", msg)
+
+        bf = ctk.CTkFrame(modal, fg_color="#F4F5F7")
+        bf.pack(fill="x", padx=20, pady=(0, 16))
+        ctk.CTkButton(bf, text="Reset Password", fg_color="#E65C00", hover_color="#CC5200", text_color="white",
+                      font=ctk.CTkFont("Segoe UI", 11, "bold"), height=36, corner_radius=6, command=do_reset).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(bf, text="Cancel", fg_color="white", hover_color="#EDEDED", text_color="#374151",
+                      border_width=1, border_color="#D0D5DD", font=ctk.CTkFont("Segoe UI", 10),
+                      height=36, corner_radius=6, command=modal.destroy).pack(side="left")

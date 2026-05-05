@@ -48,7 +48,17 @@ class BBPSystemApp(ctk.CTk):
     def show_frame(self, page_name):
         frame = self.frames[page_name]
         if page_name in ("DashboardFrame", "AdminFrame", "StaffFrame"):
-            frame.update_welcome()
+            try:
+                frame.current_section = "Dashboard" if page_name != "DashboardFrame" else "My Applications"
+                frame.update_welcome()
+            except Exception as e:
+                print(f"Warning during frame update: {e}")
+        elif page_name == "LoginFrame":
+            try:
+                frame.email_entry.delete(0, "end")
+                frame.password_entry.delete(0, "end")
+            except Exception as e:
+                print(f"Warning clearing login: {e}")
         frame.tkraise()
 
 
