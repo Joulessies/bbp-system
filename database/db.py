@@ -510,6 +510,15 @@ def issue_permit(application_id, user_email, business_name):
     conn.close()
     return pnum
 
+def simulate_permit_expiration(permit_id):
+    from datetime import timedelta
+    yesterday = (datetime.now() - timedelta(days=1)).isoformat()
+    conn = _conn()
+    conn.execute("UPDATE permits SET expires_at=?, status='Expired' WHERE id=?", (yesterday, permit_id))
+    conn.commit()
+    conn.close()
+
+
 
 # ── Staff / review stats ────────────────────────────────
 def get_staff_stats():

@@ -427,7 +427,7 @@ class AdminFrame(ctk.CTkFrame):
             ctk.CTkLabel(row, text=status_text, fg_color=st_color, text_color=st_text_color, corner_radius=10, font=ctk.CTkFont("Segoe UI", 9, "bold"), width=60).pack(side="left", padx=6)
             
             toggle_opt = "Deactivate/Suspend" if is_active else "Activate Account"
-            opts = ["Edit Account", "Reset Password", "View Audit Trail", toggle_opt]
+            opts = ["Edit Account", "Reset Password", "View Audit Trail", toggle_opt, "Delete Account"]
             om = ctk.CTkOptionMenu(
                 row,
                 values=opts,
@@ -459,7 +459,7 @@ class AdminFrame(ctk.CTkFrame):
 
         bo_hdr = ctk.CTkFrame(bo_card, fg_color="#FAFAFA", corner_radius=0)
         bo_hdr.pack(fill="x", padx=18)
-        for col, w in [("ID", 50), ("Name", 150), ("Email", 180), ("Applications", 90), ("Date Joined", 100), ("Status", 80)]:
+        for col, w in [("ID", 50), ("Name", 150), ("Email", 180), ("Applications", 90), ("Date Joined", 100), ("Status", 80), ("Actions", 100)]:
             ctk.CTkLabel(bo_hdr, text=col, text_color="#374151", font=ctk.CTkFont("Segoe UI", 10, "bold"), width=w, anchor="w").pack(side="left", padx=6, pady=6)
 
         if not applicant_users:
@@ -484,6 +484,22 @@ class AdminFrame(ctk.CTkFrame):
                 st_txt = "#2E7D32" if is_active else "#E53E3E"
                 ctk.CTkLabel(row, text="Active" if is_active else "Inactive", fg_color=st_color, text_color=st_txt,
                              corner_radius=10, font=ctk.CTkFont("Segoe UI", 9, "bold"), width=60).pack(side="left", padx=6)
+                
+                om = ctk.CTkOptionMenu(
+                    row,
+                    values=["Deactivate/Suspend" if is_active else "Activate Account"],
+                    width=90,
+                    height=28,
+                    fg_color="white",
+                    text_color="#111827",
+                    button_color="white",
+                    dropdown_fg_color="white",
+                    dropdown_hover_color="#FFF4E5",
+                    corner_radius=6,
+                )
+                om.pack(side="left", padx=6)
+                om.set("Actions")
+                om.configure(command=lambda choice, m=om, uid=u["id"], cstat=u.get("status", "Active"): self._handle_staff_action(choice, m, uid, cstat))
 
         # Application Management & Assignment Table
         app_card = ctk.CTkFrame(h, fg_color="white", corner_radius=10, border_width=1, border_color="#E5E7EB")
@@ -555,6 +571,12 @@ class AdminFrame(ctk.CTkFrame):
             from database.db import update_user_status
             update_user_status(uid, new_status)
             self._render()
+        elif choice == "Delete Account":
+            if messagebox.askyesno("Confirm Delete", f"Are you sure you want to permanently delete User #{uid}?"):
+                from database.db import delete_user
+                delete_user(uid)
+                messagebox.showinfo("Deleted", f"User #{uid} has been deleted.")
+                self._render()
         elif choice == "Edit Account":
             self._show_edit_account_modal(uid)
         elif choice == "Reset Password":
@@ -729,32 +751,74 @@ class AdminFrame(ctk.CTkFrame):
         # Date range filter
         date_frame = ctk.CTkFrame(f_row, fg_color="transparent")
         date_frame.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        ctk.CTkLabel(date_frame, text="Date Range", text_color="#374151", font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w")
-        permit_date_var = tk.StringVar(value="All Time")
-        permit_date_combo = ctk.CTkComboBox(date_frame, variable=permit_date_var, 
+        ctk.CTkLabel(date_frame, text="Date Range (Format: MM/DD/YYYY for Custom)", text_color="#374151", font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w")
+        
+        # State variables to persist filter selection
+        if not hasattr(self, "permit_filter_val"): self.permit_filter_val = "All Time"
+        if not hasattr(self, "permit_start_val"): self.permit_start_val = ""
+        if not hasattr(self, "permit_end_val"): self.permit_end_val = ""
+        
+        input_container = ctk.CTkFrame(date_frame, fg_color="transparent")
+        input_container.pack(fill="x", pady=(4, 0))
+        
+        permit_date_var = tk.StringVar(value=self.permit_filter_val)
+        
+        def on_filter_change(choice):
+            if choice == "Custom":
+                custom_date_frame.pack(side="left", fill="x", padx=(10,0))
+            else:
+                custom_date_frame.pack_forget()
+                
+        permit_date_combo = ctk.CTkComboBox(input_container, variable=permit_date_var, 
                                             values=["All Time", "Today", "This Week", "This Month", "This Year", "Custom"],
-                                            fg_color="#F9FAFB", text_color="#111827", button_color="#F9FAFB", height=32)
-        permit_date_combo.pack(fill="x", pady=(4, 0))
+                                            fg_color="#F9FAFB", text_color="#111827", button_color="#F9FAFB", height=32, command=on_filter_change)
+        permit_date_combo.pack(side="left")
         
-        # Apply date filter
+        custom_date_frame = ctk.CTkFrame(input_container, fg_color="transparent")
+        ctk.CTkLabel(custom_date_frame, text="Start:", font=ctk.CTkFont("Segoe UI", 9)).pack(side="left", padx=(5,2))
+        start_date_entry = ctk.CTkEntry(custom_date_frame, width=90, height=32, placeholder_text="MM/DD/YYYY")
+        start_date_entry.pack(side="left", padx=2)
+        start_date_entry.insert(0, self.permit_start_val)
+        
+        ctk.CTkLabel(custom_date_frame, text="End:", font=ctk.CTkFont("Segoe UI", 9)).pack(side="left", padx=(5,2))
+        end_date_entry = ctk.CTkEntry(custom_date_frame, width=90, height=32, placeholder_text="MM/DD/YYYY")
+        end_date_entry.pack(side="left", padx=2)
+        end_date_entry.insert(0, self.permit_end_val)
+        
+        if self.permit_filter_val == "Custom":
+            custom_date_frame.pack(side="left", fill="x", padx=(10,0))
+            
         def apply_permit_filter():
-            date_range = permit_date_var.get()
-            now = datetime.now()
-            filtered = permits
+            self.permit_filter_val = permit_date_var.get()
+            self.permit_start_val = start_date_entry.get().strip()
+            self.permit_end_val = end_date_entry.get().strip()
+            self._render()
             
-            if date_range == "Today":
-                filtered = [p for p in permits if p.get("issued_at", "")[:10] == now.strftime("%Y-%m-%d")]
-            elif date_range == "This Week":
-                start = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
-                filtered = [p for p in permits if p.get("issued_at", "")[:10] >= start]
-            elif date_range == "This Month":
-                filtered = [p for p in permits if p.get("issued_at", "")[:10][:7] == now.strftime("%Y-%m")]
-            elif date_range == "This Year":
-                filtered = [p for p in permits if p.get("issued_at", "")[:4] == now.strftime("%Y")]
-            
-            return filtered
+        ctk.CTkButton(input_container, text="Apply Filter", width=80, height=32, fg_color="#1D4ED8", hover_color="#1E3A8A", font=ctk.CTkFont("Segoe UI", 10, "bold"), command=apply_permit_filter).pack(side="left", padx=(10, 0))
         
-        permits = apply_permit_filter()
+        # Apply filter logic
+        date_range = self.permit_filter_val
+        now = datetime.now()
+        filtered_permits = permits
+        
+        if date_range == "Today":
+            filtered_permits = [p for p in permits if p.get("issued_at", "")[:10] == now.strftime("%Y-%m-%d")]
+        elif date_range == "This Week":
+            start = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
+            filtered_permits = [p for p in permits if p.get("issued_at", "")[:10] >= start]
+        elif date_range == "This Month":
+            filtered_permits = [p for p in permits if p.get("issued_at", "")[:10][:7] == now.strftime("%Y-%m")]
+        elif date_range == "This Year":
+            filtered_permits = [p for p in permits if p.get("issued_at", "")[:4] == now.strftime("%Y")]
+        elif date_range == "Custom" and self.permit_start_val and self.permit_end_val:
+            try:
+                start_dt = datetime.strptime(self.permit_start_val, "%m/%d/%Y").strftime("%Y-%m-%d")
+                end_dt = datetime.strptime(self.permit_end_val, "%m/%d/%Y").strftime("%Y-%m-%d")
+                filtered_permits = [p for p in permits if start_dt <= p.get("issued_at", "")[:10] <= end_dt]
+            except ValueError:
+                messagebox.showerror("Invalid Date", "Please enter dates in MM/DD/YYYY format.")
+        
+        permits = filtered_permits
 
         # Pending applications to review
         if pending_apps:
@@ -783,7 +847,7 @@ class AdminFrame(ctk.CTkFrame):
             anchor="w", padx=18, pady=(16, 12))
         hdr = ctk.CTkFrame(card, fg_color="#FAFAFA", corner_radius=0)
         hdr.pack(fill="x", padx=18)
-        for col, w in [("Permit #", 100), ("Business", 130), ("Owner", 130), ("Issued", 90), ("Expires", 90), ("Status", 80), ("Actions", 100)]:
+        for col, w in [("Permit #", 100), ("Business", 130), ("Owner", 130), ("Issued", 90), ("Expires", 90), ("Status", 80), ("Actions", 230)]:
             ctk.CTkLabel(hdr, text=col, text_color="#374151",
                          font=ctk.CTkFont("Segoe UI", 10, "bold"),
                          width=w, anchor="w").pack(side="left", padx=4, pady=6)
@@ -802,8 +866,20 @@ class AdminFrame(ctk.CTkFrame):
                 st_bg = "#E8F5E9" if p["status"] == "Active" else "#FDE8E8"
                 st_tc = "#2E7D32" if p["status"] == "Active" else "#E53E3E"
                 ctk.CTkLabel(row, text=p["status"], fg_color=st_bg, text_color=st_tc, corner_radius=10, font=ctk.CTkFont("Segoe UI", 9, "bold"), width=70).pack(side="left", padx=4, pady=4)
-                ctk.CTkButton(row, text="👁", width=30, height=24, fg_color="#EBF5FF", hover_color="#DBEAFE", text_color="#1D4ED8", corner_radius=4, command=lambda p=p: messagebox.showinfo("Permit Details", f"Permit: {p['permit_number']}\nBusiness: {p['business_name']}\nOwner: {p['user_email']}\nIssued: {(p['issued_at'] or '')[:10]}\nExpires: {(p['expires_at'] or '')[:10]}\nStatus: {p['status']}")).pack(side="left", padx=2, pady=4)
-                ctk.CTkButton(row, text="🖨", width=30, height=24, fg_color="#F3F4F6", hover_color="#E5E7EB", text_color="#374151", corner_radius=4, command=lambda p=p: self._print_permit(p)).pack(side="left", padx=2, pady=4)
+                act_frame = ctk.CTkFrame(row, fg_color="transparent", width=230, height=35)
+                act_frame.pack(side="left", padx=4)
+                act_frame.pack_propagate(False)
+                
+                def _do_expire(permit_id=p['id']):
+                    if messagebox.askyesno("Confirm", "Simulate expiration for this permit?"):
+                        from database.db import simulate_permit_expiration
+                        simulate_permit_expiration(permit_id)
+                        messagebox.showinfo("Expired", "Permit successfully expired.")
+                        self._render()
+
+                ctk.CTkButton(act_frame, text="View", width=60, height=24, fg_color="#EBF5FF", hover_color="#DBEAFE", text_color="#1D4ED8", font=ctk.CTkFont("Segoe UI", 10, "bold"), corner_radius=4, command=lambda p=p: messagebox.showinfo("Permit Details", f"Permit: {p['permit_number']}\nBusiness: {p['business_name']}\nOwner: {p['user_email']}\nIssued: {(p['issued_at'] or '')[:10]}\nExpires: {(p['expires_at'] or '')[:10]}\nStatus: {p['status']}")).pack(side="left", padx=(0, 5), pady=5)
+                ctk.CTkButton(act_frame, text="Print", width=60, height=24, fg_color="#F3F4F6", hover_color="#E5E7EB", text_color="#374151", font=ctk.CTkFont("Segoe UI", 10, "bold"), corner_radius=4, command=lambda p=p: self._print_permit(p)).pack(side="left", padx=(0, 5), pady=5)
+                ctk.CTkButton(act_frame, text="Expire (Test)", width=80, height=24, fg_color="#FEF2F2", hover_color="#FEE2E2", text_color="#DC2626", font=ctk.CTkFont("Segoe UI", 10, "bold"), corner_radius=4, command=_do_expire).pack(side="left", pady=5)
 
     def _open_review_modal(self, app):
         modal = ctk.CTkToplevel(self)
@@ -990,12 +1066,50 @@ class AdminFrame(ctk.CTkFrame):
         # Date range filter
         date_frame = ctk.CTkFrame(f_row, fg_color="transparent")
         date_frame.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        ctk.CTkLabel(date_frame, text="Date Range", text_color="#374151", font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w")
-        date_range_var = tk.StringVar(value="All Time")
-        date_range_combo = ctk.CTkComboBox(date_frame, variable=date_range_var, 
+        ctk.CTkLabel(date_frame, text="Date Range (Format: MM/DD/YYYY for Custom)", text_color="#374151", font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w")
+        
+        # State variables to persist filter selection
+        if not hasattr(self, "report_filter_val"): self.report_filter_val = "All Time"
+        if not hasattr(self, "report_start_val"): self.report_start_val = ""
+        if not hasattr(self, "report_end_val"): self.report_end_val = ""
+        
+        input_container = ctk.CTkFrame(date_frame, fg_color="transparent")
+        input_container.pack(fill="x")
+        
+        date_range_var = tk.StringVar(value=self.report_filter_val)
+        
+        def on_report_filter_change(choice):
+            if choice == "Custom":
+                custom_date_frame.pack(side="left", fill="x", padx=(10,0))
+            else:
+                custom_date_frame.pack_forget()
+                
+        date_range_combo = ctk.CTkComboBox(input_container, variable=date_range_var, 
                                            values=["All Time", "Today", "This Week", "This Month", "This Year", "Custom"],
-                                           fg_color="#F9FAFB", text_color="#111827", button_color="#F9FAFB", height=32)
-        date_range_combo.pack(fill="x")
+                                           fg_color="#F9FAFB", text_color="#111827", button_color="#F9FAFB", height=32, command=on_report_filter_change)
+        date_range_combo.pack(side="left")
+        
+        custom_date_frame = ctk.CTkFrame(input_container, fg_color="transparent")
+        ctk.CTkLabel(custom_date_frame, text="Start:", font=ctk.CTkFont("Segoe UI", 9)).pack(side="left", padx=(5,2))
+        r_start_date_entry = ctk.CTkEntry(custom_date_frame, width=90, height=32, placeholder_text="MM/DD/YYYY")
+        r_start_date_entry.pack(side="left", padx=2)
+        r_start_date_entry.insert(0, self.report_start_val)
+        
+        ctk.CTkLabel(custom_date_frame, text="End:", font=ctk.CTkFont("Segoe UI", 9)).pack(side="left", padx=(5,2))
+        r_end_date_entry = ctk.CTkEntry(custom_date_frame, width=90, height=32, placeholder_text="MM/DD/YYYY")
+        r_end_date_entry.pack(side="left", padx=2)
+        r_end_date_entry.insert(0, self.report_end_val)
+        
+        if self.report_filter_val == "Custom":
+            custom_date_frame.pack(side="left", fill="x", padx=(10,0))
+            
+        def apply_report_filter():
+            self.report_filter_val = date_range_var.get()
+            self.report_start_val = r_start_date_entry.get().strip()
+            self.report_end_val = r_end_date_entry.get().strip()
+            self._render()
+            
+        ctk.CTkButton(input_container, text="Apply Filter", width=80, height=32, fg_color="#1D4ED8", hover_color="#1E3A8A", font=ctk.CTkFont("Segoe UI", 10, "bold"), command=apply_report_filter).pack(side="left", padx=(10, 0))
         
         def _add_filter(parent, label, vals):
             f = ctk.CTkFrame(parent, fg_color="transparent")

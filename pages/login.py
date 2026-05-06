@@ -48,8 +48,15 @@ class LoginFrame(ctk.CTkFrame):
 
         # Password
         ctk.CTkLabel(inner_card, text="Password", font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"), text_color="#111827", anchor="w").pack(fill="x")
-        self.password_entry = ctk.CTkEntry(inner_card, font=ctk.CTkFont(family="Segoe UI", size=13), fg_color="#f4f4f5", text_color="#111827", border_width=0, width=400, height=40, corner_radius=6, show="*", placeholder_text="Enter your password")
-        self.password_entry.pack(fill="x", pady=(5, 10))
+        
+        pwd_frame = ctk.CTkFrame(inner_card, fg_color="#f4f4f5", corner_radius=6, height=40)
+        pwd_frame.pack(fill="x", pady=(5, 10))
+        
+        self.password_entry = ctk.CTkEntry(pwd_frame, font=ctk.CTkFont(family="Segoe UI", size=13), fg_color="transparent", text_color="#111827", border_width=0, show="*", placeholder_text="Enter your password")
+        self.password_entry.pack(side="left", fill="both", expand=True, padx=(5, 0))
+        
+        self.pwd_btn = ctk.CTkButton(pwd_frame, text="Show", width=40, fg_color="transparent", hover_color="#e5e7eb", text_color="#6b7280", font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"), command=self.toggle_pwd)
+        self.pwd_btn.pack(side="right", padx=(0, 5))
 
         # Remember me / Forgot password
         options_frame = ctk.CTkFrame(inner_card, fg_color="transparent")
@@ -155,3 +162,12 @@ class LoginFrame(ctk.CTkFrame):
         ctk.CTkButton(bf, text="Cancel", fg_color="white", hover_color="#EDEDED", text_color="#374151",
                       border_width=1, border_color="#D0D5DD", font=ctk.CTkFont("Segoe UI", 10),
                       height=36, corner_radius=6, command=modal.destroy).pack(side="left")
+
+    def toggle_pwd(self):
+        if self.password_entry.cget("show") == "*":
+            self.password_entry.configure(show="")
+            self.pwd_btn.configure(text="Hide")
+        else:
+            self.password_entry.configure(show="*")
+            self.pwd_btn.configure(text="Show")
+

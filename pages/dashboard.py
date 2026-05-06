@@ -528,28 +528,25 @@ class DashboardFrame(ctk.CTkFrame):
         
         # Conditional field for "Other"
         other_field_container = ctk.CTkFrame(s3, fg_color="white")
-        other_field_container.pack(fill="x", pady=(0, 8))
+        
+        ctk.CTkLabel(other_field_container, text="Please specify the line of business", text_color="#111827",
+                     font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w", pady=(8, 2))
+        other_entry = ctk.CTkEntry(other_field_container, fg_color="#F3F4F6", border_width=1, 
+                                   border_color="#E5E7EB", height=36)
+        other_entry.pack(fill="x")
+        self.form_vars["line_of_business_other"] = other_entry
         
         def update_other_field(*args):
             if lob_var.get() == "Other":
-                if not hasattr(self, '_other_field_shown'):
-                    ctk.CTkLabel(other_field_container, text="Please specify the line of business", text_color="#111827",
-                                 font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w", pady=(8, 2))
-                    other_entry = ctk.CTkEntry(other_field_container, fg_color="#F3F4F6", border_width=1, 
-                                               border_color="#E5E7EB", height=36)
-                    other_entry.pack(fill="x")
-                    self.form_vars["line_of_business_other"] = other_entry
-                    self._other_field_shown = True
+                other_field_container.pack(fill="x", pady=(0, 8))
             else:
                 other_field_container.pack_forget()
-                other_field_container.pack(fill="x", pady=(0, 8))
-                if hasattr(self, '_other_field_shown'):
-                    self._other_field_shown = False
         
         lob_var.trace("w", update_other_field)
 
         # Section 4: Documents
         s4 = section_card("Required Documents")
+        ctk.CTkLabel(s4, text="Note: Maximum 50 MB per file. Total upload limit is 500 MB.", text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 10, "italic")).pack(anchor="w", pady=(0, 8))
         docs = ["DTI / SEC / CDA Registration", "Fire Safety Inspection Certificate",
                 "Affidavit of Undertaking", "Business Permit Application Form (Signed)",
                 "Locational Clearance", "Sketch / Location Plan"]

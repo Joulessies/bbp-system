@@ -253,23 +253,28 @@ class StaffFrame(ctk.CTkFrame):
                 row = ctk.CTkFrame(card, fg_color="white")
                 row.pack(fill="x", padx=18, pady=4)
                 
-                # Dynamic ML Mock Values (Risk Assessment)
+                docs_uploaded = get_application_documents(a["id"])
+                docs_count = min(len(docs_uploaded), 6)
+                base_score = int((docs_count / 6) * 70)  
+                data_fields = [a.get("business_name"), a.get("business_address"), a.get("contact_number"), a.get("capital_investment"), a.get("tin_number"), a.get("dti_sec_cda_reg_no")]
+                filled_count = sum(1 for f in data_fields if f and str(f).strip() and str(f) != "0" and str(f) != "0.0")
+                data_score = int((filled_count / 6) * 30)
+                total_score = base_score + data_score
+                score = f"{total_score}%"
+                
                 cap = a.get("capital_investment", 0)
                 if cap > 1000000:
                     risk = "High"
                     risk_color = "#FDE8E8"
                     risk_txt = "#E53E3E"
-                    score = "45%"  # Higher capital = higher risk
                 elif cap > 100000:
                     risk = "Medium"
                     risk_color = "#FEF3C7"
                     risk_txt = "#D97706"
-                    score = "70%"  # Medium capital = medium risk
                 else:
                     risk = "Low"
                     risk_color = "#E1F2E8"
                     risk_txt = "#2E7D32"
-                    score = "90%"  # Low capital = lower risk
                     
                 status_color = "#FFF4E5" if a["status"] in ("Pending", "Returned for Correction") else "#E8F5E9" if a["status"] in ("Approved", "Ready for Pickup") else "#FDE8E8"
                 status_txt = "#F05A00" if a["status"] in ("Pending", "Returned for Correction") else "#2E7D32" if a["status"] in ("Approved", "Ready for Pickup") else "#E53E3E"
@@ -376,7 +381,7 @@ class StaffFrame(ctk.CTkFrame):
         
         hdr = ctk.CTkFrame(card, fg_color="#FAFAFA", corner_radius=0)
         hdr.pack(fill="x", padx=18)
-        cols = [("Year", 60), ("Business Name", 200), ("Owner", 160), ("Type", 100), ("Status", 100), ("Actions", 100)]
+        cols = [("Year", 60), ("Business Name", 200), ("Owner", 160), ("Type", 100), ("Status", 100), ("Actions", 140)]
         for col, width in cols:
             ctk.CTkLabel(hdr, text=col, text_color="#374151", font=ctk.CTkFont("Segoe UI", 10, "bold"), width=width, anchor="w").pack(side="left", padx=4, pady=6)
             
@@ -416,11 +421,11 @@ class StaffFrame(ctk.CTkFrame):
                 s_frame.pack_propagate(False)
                 ctk.CTkLabel(s_frame, text=p.get("status", "Approved"), text_color="#2E7D32", fg_color="#E8F5E9", corner_radius=10, font=ctk.CTkFont("Segoe UI", 9, "bold")).pack(anchor="w", pady=6, ipadx=6, ipady=2)
                 
-                act = ctk.CTkFrame(row, fg_color="transparent", width=100, height=35)
+                act = ctk.CTkFrame(row, fg_color="transparent", width=140, height=35)
                 act.pack(side="left", padx=4)
                 act.pack_propagate(False)
-                ctk.CTkButton(act, text="👁", width=30, height=24, fg_color="#F3F4F6", hover_color="#E5E7EB", text_color="#374151", corner_radius=4, command=lambda p=p, o=owner, t=app_type: self._view_permit(p, o, t)).pack(side="left", padx=(0, 5), pady=5)
-                ctk.CTkButton(act, text="🖨 Print", width=60, height=24, fg_color="#E65C00", hover_color="#CC5200", text_color="white", font=ctk.CTkFont("Segoe UI", 10, "bold"), corner_radius=4, command=lambda p=p, o=owner: self._print_permit(p, o)).pack(side="left", pady=5)
+                ctk.CTkButton(act, text="View", width=60, height=24, fg_color="#F3F4F6", hover_color="#E5E7EB", text_color="#374151", font=ctk.CTkFont("Segoe UI", 10, "bold"), corner_radius=4, command=lambda p=p, o=owner, t=app_type: self._view_permit(p, o, t)).pack(side="left", padx=(0, 5), pady=5)
+                ctk.CTkButton(act, text="Print", width=60, height=24, fg_color="#E65C00", hover_color="#CC5200", text_color="white", font=ctk.CTkFont("Segoe UI", 10, "bold"), corner_radius=4, command=lambda p=p, o=owner: self._print_permit(p, o)).pack(side="left", pady=5)
 
     def _view_permit(self, p, owner, app_type):
         details = f"Permit Number: {p['permit_number']}\nBusiness Name: {p['business_name']}\nOwner: {owner}\nType: {app_type}\nExpires: {(p.get('expires_at') or '')[:10]}"
