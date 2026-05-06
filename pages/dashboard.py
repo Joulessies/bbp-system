@@ -521,10 +521,6 @@ class DashboardFrame(ctk.CTkFrame):
                      font=ctk.CTkFont("Segoe UI", 10)).pack(anchor="w", pady=(8, 2))
         lob_var = tk.StringVar(value="Select line of business")
         self.form_vars["line_of_business"] = lob_var
-        lob_combo = ctk.CTkComboBox(s3, variable=lob_var, values=["Select line of business", "Food", "Retail", "Services", "Manufacturing", "Other"],
-                        height=36, fg_color="#F3F4F6",
-                        border_width=0, dropdown_fg_color="white")
-        lob_combo.pack(fill="x", pady=(0, 8))
         
         # Conditional field for "Other"
         other_field_container = ctk.CTkFrame(s3, fg_color="white")
@@ -536,13 +532,16 @@ class DashboardFrame(ctk.CTkFrame):
         other_entry.pack(fill="x")
         self.form_vars["line_of_business_other"] = other_entry
         
-        def update_other_field(*args):
-            if lob_var.get() == "Other":
+        def update_other_field(choice):
+            if choice == "Other":
                 other_field_container.pack(fill="x", pady=(0, 8))
             else:
                 other_field_container.pack_forget()
-        
-        lob_var.trace("w", update_other_field)
+
+        lob_combo = ctk.CTkComboBox(s3, variable=lob_var, values=["Select line of business", "Food", "Retail", "Services", "Manufacturing", "Other"],
+                        height=36, fg_color="#F3F4F6",
+                        border_width=0, dropdown_fg_color="white", command=update_other_field)
+        lob_combo.pack(fill="x", pady=(0, 8))
 
         # Section 4: Documents
         s4 = section_card("Required Documents")
@@ -581,22 +580,29 @@ class DashboardFrame(ctk.CTkFrame):
         path = filedialog.askopenfilename(
             title=f"Upload: {doc_name}",
             filetypes=[
+                ("Allowed files", "*.png *.jpg *.jpeg *.bmp *.gif *.pdf *.docx"),
                 ("Image files", "*.png *.jpg *.jpeg *.bmp *.gif"),
-                ("PNG files", "*.png"),
-                ("JPEG files", "*.jpg *.jpeg"),
-                ("All image files", "*.png *.jpg *.jpeg *.bmp *.gif"),
+                ("PDF files", "*.pdf"),
+                ("Word files", "*.docx"),
+                ("All files", "*.*"),
             ]
         )
         if not path:
             return
+            
         ext = os.path.splitext(path)[1].lower()
-        if ext not in (".png", ".jpg", ".jpeg", ".bmp", ".gif"):
-            messagebox.showerror("Invalid File", "Only image files (PNG, JPG, JPEG, BMP, GIF) are allowed.")
+        if ext not in (".png", ".jpg", ".jpeg", ".bmp", ".gif", ".pdf", ".docx"):
+            messagebox.showerror("Invalid File", "Only Image, PDF, and DOCX files are allowed.")
             return
+            
         try:
             size = os.path.getsize(path)
         except OSError:
             messagebox.showerror("Error", "Cannot read file.")
+            return
+            
+        if size == 0:
+            messagebox.showerror("Invalid File", "The selected file is empty (0 bytes).")
             return
         
         # Check individual file size limit (50 MB per file)
@@ -610,10 +616,23 @@ class DashboardFrame(ctk.CTkFrame):
         if current - prev + size > self.max_upload_bytes:
             messagebox.showwarning("Limit", "Total uploads cannot exceed 500 MB.")
             return
+            
         self.uploaded_documents[doc_name] = {"path": path, "size": size}
         self._render()
 
     def _submit_application(self):
+        # Validate Required Documents
+        required_docs = [
+            "DTI / SEC / CDA Registration", "Fire Safety Inspection Certificate",
+            "Affidavit of Undertaking", "Business Permit Application Form (Signed)",
+            "Locational Clearance", "Sketch / Location Plan"
+        ]
+        
+        missing_docs = [doc for doc in required_docs if doc not in self.uploaded_documents]
+        if missing_docs:
+            messagebox.showwarning("Missing Documents", "Please upload all required documents before submitting:\n\n" + "\n".join(f"• {d}" for d in missing_docs))
+            return
+
         bname = self.form_vars.get("business_name")
         bname_val = bname.get().strip() if bname else ""
         if not bname_val:

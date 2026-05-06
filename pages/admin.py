@@ -426,24 +426,19 @@ class AdminFrame(ctk.CTkFrame):
             status_text = "Active" if is_active else "Inactive"
             ctk.CTkLabel(row, text=status_text, fg_color=st_color, text_color=st_text_color, corner_radius=10, font=ctk.CTkFont("Segoe UI", 9, "bold"), width=60).pack(side="left", padx=6)
             
-            toggle_opt = "Deactivate/Suspend" if is_active else "Activate Account"
-            opts = ["Edit Account", "Reset Password", "View Audit Trail", toggle_opt, "Delete Account"]
-            om = ctk.CTkOptionMenu(
-                row,
-                values=opts,
-                width=90,
-                height=28,
-                fg_color="#F3F4F6",
-                button_color="#E5E7EB",
-                button_hover_color="#D1D5DB",
-                text_color="#374151",
-                dropdown_fg_color="white",
-                dropdown_hover_color="#FFF4E5",
-                corner_radius=6,
-            )
-            om.pack(side="left", padx=6)
-            om.set("Actions")
-            om.configure(command=lambda choice, m=om, uid=s["id"], cstat=s.get("status", "Active"): self._handle_staff_action(choice, m, uid, cstat))
+            act_frame = ctk.CTkFrame(row, fg_color="transparent", width=250, height=35)
+            act_frame.pack(side="left", padx=6)
+            act_frame.pack_propagate(False)
+            
+            ctk.CTkButton(act_frame, text="✏️ Edit", width=50, height=24, fg_color="#EBF5FF", hover_color="#DBEAFE", text_color="#1D4ED8", font=ctk.CTkFont("Segoe UI", 9, "bold"), corner_radius=4, command=lambda u=s["id"]: self._show_edit_account_modal(u)).pack(side="left", padx=(0, 4), pady=5)
+            
+            toggle_text = "Suspend" if is_active else "Activate"
+            toggle_color = "#FEF2F2" if is_active else "#E8F5E9"
+            toggle_hover = "#FEE2E2" if is_active else "#C8E6C9"
+            toggle_tc = "#DC2626" if is_active else "#2E7D32"
+            ctk.CTkButton(act_frame, text=f"⏻ {toggle_text}", width=60, height=24, fg_color=toggle_color, hover_color=toggle_hover, text_color=toggle_tc, font=ctk.CTkFont("Segoe UI", 9, "bold"), corner_radius=4, command=lambda u=s["id"], c=is_active: self._handle_staff_action("Deactivate/Suspend" if c else "Activate Account", None, u, "Active" if c else "Inactive")).pack(side="left", padx=(0, 4), pady=5)
+            
+            ctk.CTkButton(act_frame, text="🗑️ Delete", width=50, height=24, fg_color="#FEF2F2", hover_color="#FEE2E2", text_color="#DC2626", font=ctk.CTkFont("Segoe UI", 9, "bold"), corner_radius=4, command=lambda u=s["id"]: self._handle_staff_action("Delete Account", None, u, "")).pack(side="left", pady=5)
 
         # ── Registered Business Owners ──
         applicant_users = [u for u in users if u["role"] == "applicant"]
@@ -565,7 +560,8 @@ class AdminFrame(ctk.CTkFrame):
             messagebox.showerror("Error", msg)
 
     def _handle_staff_action(self, choice, m, uid, current_status):
-        m.set("⋮")
+        if m:
+            m.set("Actions")
         if choice in ("Deactivate/Suspend", "Activate Account"):
             new_status = "Inactive" if current_status == "Active" else "Active"
             from database.db import update_user_status
