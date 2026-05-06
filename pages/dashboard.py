@@ -426,36 +426,43 @@ class DashboardFrame(ctk.CTkFrame):
         webbrowser.open('file://' + os.path.realpath(path))
 
     def _renew_permit(self, app_data):
-        """Create a renewal application for an expired permit"""
+        """Redirect to New Application form with pre-filled data for renewal"""
         result = messagebox.askyesno("Renew Permit", 
             f"Do you want to renew your permit for {app_data['business_name']}?\n\n"
             f"A new application will be created as a renewal. You may need to update some information.")
         if not result:
             return
         
-        user = self.controller.logged_in_user or ""
+        # Pre-fill form fields with existing data
+        self.form_vars["ownership_type"] = tk.StringVar(value=app_data.get("ownership_type", ""))
+        self.form_vars["registration_no"] = tk.StringVar(value=app_data.get("dti_sec_cda_reg_no", ""))
+        self.form_vars["tin_number"] = tk.StringVar(value=app_data.get("tin_number", ""))
+        self.form_vars["business_name"] = tk.StringVar(value=app_data.get("business_name", ""))
+        self.form_vars["business_address"] = tk.StringVar(value=app_data.get("business_address", ""))
+        self.form_vars["first_name"] = tk.StringVar(value=app_data.get("owner_first_name", ""))
+        self.form_vars["last_name"] = tk.StringVar(value=app_data.get("owner_last_name", ""))
+        self.form_vars["gender"] = tk.StringVar(value=app_data.get("gender", ""))
+        self.form_vars["contact_number"] = tk.StringVar(value=app_data.get("contact_number", ""))
+        self.form_vars["email_address"] = tk.StringVar(value=app_data.get("email_address", ""))
+        self.form_vars["male_employees"] = tk.StringVar(value=app_data.get("employees_male", ""))
+        self.form_vars["female_employees"] = tk.StringVar(value=app_data.get("employees_female", ""))
+        self.form_vars["capital_asset"] = tk.StringVar(value=app_data.get("capital_investment", ""))
         
-        # Create a renewal application with existing data
-        submit_application(
-            user_email=user,
-            business_name=app_data.get("business_name", ""),
-            business_type=app_data.get("business_type", ""),
-            ownership_type=app_data.get("ownership_type", ""),
-            business_address=app_data.get("business_address", ""),
-            capital_investment=app_data.get("capital_investment", ""),
-            employees_male=app_data.get("employees_male", ""),
-            employees_female=app_data.get("employees_female", ""),
-            owner_first_name=app_data.get("owner_first_name", ""),
-            owner_last_name=app_data.get("owner_last_name", ""),
-            contact_number=app_data.get("contact_number", ""),
-            email=app_data.get("email_address", ""),
-            tin_number=app_data.get("tin_number", ""),
-            dti_sec_cda_reg_no=app_data.get("dti_sec_cda_reg_no", ""),
-            gender=app_data.get("gender", "")
-        )
+        # Set line of business
+        bt = app_data.get("business_type", "")
+        valid_lines = ["Food", "Retail", "Services", "Manufacturing"]
+        if bt in valid_lines:
+            self.form_vars["line_of_business"] = tk.StringVar(value=bt)
+        else:
+            self.form_vars["line_of_business"] = tk.StringVar(value="Other")
+            # Create entry for other field if not exists
+            if "line_of_business_other" not in self.form_vars:
+                self.form_vars["line_of_business_other"] = ctk.CTkEntry(self, fg_color="#F3F4F6", border_width=1, height=36)
+            if isinstance(self.form_vars["line_of_business_other"], ctk.CTkEntry):
+                self.form_vars["line_of_business_other"].insert(0, bt)
         
-        messagebox.showinfo("Success", "Renewal application submitted successfully!")
-        self._render()
+        # Redirect to New Application form
+        self._switch("New Application")
 
     # ── New Application ──────────────────────────────────────
     def _render_new_app(self):
