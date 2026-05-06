@@ -545,21 +545,31 @@ class DashboardFrame(ctk.CTkFrame):
 
         # Section 4: Documents
         s4 = section_card("Required Documents")
-        ctk.CTkLabel(s4, text="Note: Maximum 50 MB per file. Total upload limit is 500 MB.", text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 10, "italic")).pack(anchor="w", pady=(0, 8))
+        ctk.CTkLabel(s4, text="Note: Maximum 50 MB per file. Total upload limit is 500 MB.", text_color="#6B7280", font=ctk.CTkFont("Segoe UI", 10, slant="italic")).pack(anchor="w", pady=(0, 8))
+        
         docs = ["DTI / SEC / CDA Registration", "Fire Safety Inspection Certificate",
                 "Affidavit of Undertaking", "Business Permit Application Form (Signed)",
                 "Locational Clearance", "Sketch / Location Plan"]
+        
         for doc in docs:
             row = ctk.CTkFrame(s4, fg_color="white")
-            row.pack(fill="x", pady=2)
-            status = "✓ Uploaded" if doc in self.uploaded_documents else "No file"
+            row.pack(fill="x", pady=4, anchor="w")
+            
+            # Document label
             ctk.CTkLabel(row, text=doc, text_color="#374151",
-                         font=ctk.CTkFont("Segoe UI", 10)).pack(side="left")
-            ctk.CTkButton(row, text=status if doc in self.uploaded_documents else "Upload",
-                          width=80, height=26, corner_radius=4,
-                          fg_color="#E8F5E9" if doc in self.uploaded_documents else "#F3F4F6",
+                         font=ctk.CTkFont("Segoe UI", 10), width=300, anchor="w").pack(side="left", padx=(0, 10))
+            
+            # Upload button
+            is_uploaded = doc in self.uploaded_documents
+            btn_text = "✓ Uploaded" if is_uploaded else "Upload"
+            btn_fg = "#E8F5E9" if is_uploaded else "#F3F4F6"
+            btn_tc = "#2E7D32" if is_uploaded else "#6B7280"
+            
+            ctk.CTkButton(row, text=btn_text,
+                          width=90, height=28, corner_radius=6,
+                          fg_color=btn_fg,
                           hover_color="#EDEDED",
-                          text_color="#2E7D32" if doc in self.uploaded_documents else "#6B7280",
+                          text_color=btn_tc,
                           font=ctk.CTkFont("Segoe UI", 9),
                           command=lambda d=doc: self._upload_doc(d)).pack(side="right")
 
